@@ -1,0 +1,108 @@
+4,Aggregate BLS keys,2.085192,0.362783
+4,Generate VC payload,2.534318,0.504863
+4,Sign with N issuer,33.522259,3.029174
+4,Aggregate BLS signatures,6.406448,0.516980
+4,Generate N PoOs,79.974587,5.777899
+4,Create final VC,7.276723,0.322654
+4,Store VC,23.654794,6.167465
+4,Create VP,13.095304,6.851595
+4,Verify VP,248.991524,48.375109
+4,BLS Signature Verification,8.497784,0.726210
+4,DID DocumentS Resolution,234.256678,30.837026
+4,Proofs of Ownership Verification,76.783036,5.592481
+8,Aggregate BLS keys,3.934847,0.539129
+8,Generate VC payload,2.516776,0.458018
+8,Sign with N issuer,64.458974,5.094676
+8,Aggregate BLS signatures,12.138783,0.520012
+8,Generate N PoOs,152.444130,7.205906
+8,Create final VC,12.810976,0.672483
+8,Store VC,23.811042,4.768743
+8,Create VP,12.178499,6.476237
+8,Verify VP,238.357219,30.466370
+8,BLS Signature Verification,8.834914,2.364763
+8,DID DocumentS Resolution,226.578874,15.983508
+8,Proofs of Ownership Verification,143.650702,6.006070
+16,Aggregate BLS keys,7.488842,0.705209
+16,Generate VC payload,2.818833,0.723149
+16,Sign with N issuer,127.808921,14.750960
+16,Aggregate BLS signatures,25.432410,3.411003
+16,Generate N PoOs,327.193236,49.044506
+16,Create final VC,26.131380,3.132118
+16,Store VC,29.761272,25.918082
+16,Create VP,14.235136,5.965811
+16,Verify VP,242.180069,34.041652
+16,BLS Signature Verification,8.911650,1.198702
+16,DID DocumentS Resolution,236.314137,11.281528
+16,Proofs of Ownership Verification,305.288072,21.966061
+32,Aggregate BLS keys,14.670636,1.210917
+32,Generate VC payload,2.651094,0.705758
+32,Sign with N issuer,234.612021,18.205943
+32,Aggregate BLS signatures,47.207335,3.947351
+32,Generate N PoOs,632.666562,45.867794
+32,Create final VC,48.444391,6.579133
+32,Store VC,25.237267,7.373704
+32,Create VP,13.051315,6.436202
+32,Verify VP,233.957361,36.285675
+32,BLS Signature Verification,8.354365,0.498040
+32,DID DocumentS Resolution,242.169764,11.918942
+32,Proofs of Ownership Verification,602.563175,35.015179
+64,Aggregate BLS keys,29.016105,1.054342
+64,Generate VC payload,2.994123,1.011697
+64,Sign with N issuer,444.865389,25.719129
+64,Aggregate BLS signatures,90.529505,2.556997
+64,Generate N PoOs,1236.196475,86.203421
+64,Create final VC,96.822732,22.429967
+64,Store VC,24.769908,4.210987
+64,Create VP,14.682385,6.459206
+64,Verify VP,244.826980,39.972440
+64,BLS Signature Verification,8.615284,0.784578
+64,DID DocumentS Resolution,295.464625,13.643894
+64,Proofs of Ownership Verification,1152.848574,23.954699
+128,Aggregate BLS keys,55.948754,2.368526
+128,Generate VC payload,2.792265,0.758366
+128,Sign with N issuer,884.431916,52.954383
+128,Aggregate BLS signatures,179.483699,9.733564
+128,Generate N PoOs,2605.053755,87.610846
+128,Create final VC,181.475555,4.031268
+128,Store VC,27.066455,7.122080
+128,Create VP,15.251742,6.899028
+128,Verify VP,345.021252,27.854461
+128,BLS Signature Verification,9.247958,0.593656
+128,DID DocumentS Resolution,375.982071,21.274521
+128,Proofs of Ownership Verification,2499.931480,108.674488
+256,Aggregate BLS keys,113.276234,15.465334
+256,Generate VC payload,5.247170,2.140079
+256,Sign with N issuer,1885.291621,175.907754
+256,Aggregate BLS signatures,358.915395,8.685035
+256,Generate N PoOs,5296.635148,133.514514
+256,Create final VC,362.530283,7.293768
+256,Store VC,29.940639,5.248255
+256,Create VP,18.405308,6.082090
+256,Verify VP,352.135328,23.007935
+256,BLS Signature Verification,8.483655,0.497979
+256,DID DocumentS Resolution,12567.233784,6267.979011
+256,Proofs of Ownership Verification,5117.112287,113.069479
+4,Aggregate BLS keys,2.331384,0.260998
+4,Generate VC payload,1.237601,0.680844
+4,Sign with N issuer,30.336893,3.008999
+4,Aggregate BLS signatures,6.844642,0.308335
+4,Generate N PoOs,43.148044,2.806395
+4,Create final VC,7.001935,0.145491
+4,Store VC,20.519200,1.618398
+4,Create VP,10.974454,9.545233
+4,Verify VP,243.482746,58.607419
+4,BLS Signature Verification,9.082364,0.544564
+4,DID DocumentS Resolution,227.342941,9.557651
+4,Proofs of Ownership Verification,38.070514,2.326214
+4,Aggregate BLS keys,2.248127,0.304755
+4,Generate VC payload,1.218130,0.650066
+4,Sign with N issuer,30.504731,1.587419
+4,Aggregate BLS signatures,6.743045,0.090398
+4,Generate N PoOs,43.092474,2.422116
+4,Create final VC,6.891688,0.290937
+4,Store VC,23.409374,5.153981
+4,Create VP,10.464626,10.503613
+4,Verify VP,250.459801,63.100021
+4,BLS Signature Verification,9.073810,0.750025
+4,DID DocumentS Resolution,224.160985,10.162187
+4,Proofs of Ownership Verification,38.025826,1.544651

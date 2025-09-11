@@ -184,7 +184,7 @@ export class BlsEthrDIDProvider extends AbstractIdentifierProvider {
         }
     }
     async addKey({ identifier, key, options }, context) {
-        console.log("key to add" + JSON.stringify(key, null, 2));
+        //console.log("key to add"+JSON.stringify(key,null,2))
         const ethrDid = await this.getEthrDidController(identifier, context);
         //NEW: ADDED key type BLS12381G1
         const usg = key.type === 'X25519' ? 'enc' : (key.type === "Bls12381G1" ? "veriKey" : 'veriKey');

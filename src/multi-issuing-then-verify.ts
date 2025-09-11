@@ -34,7 +34,7 @@ async function main() {
         ]
     }
 
-    console.log("step1")
+    //console.log("step1")
     const vc1 = await agent.signMultiIssuedVerifiableCredential({
         credential: payloadToSign,
         issuer:`did:ethr:sepolia:${address}`,
@@ -51,7 +51,7 @@ async function main() {
         //Calling with ProofFormat Bls, requires the next statement!
     } as ISignMultiIssuerVerifiableCredentialArgs & { proofFormat: 'sign-bls-multi-signature' });
 
-    console.log("VC1"+JSON.stringify(vc1,null,2))
+    //console.log("VC1"+JSON.stringify(vc1,null,2))
 
     let list_of_signatures = [vc1.signatureData.signatureHex, vc2.signatureData.signatureHex]
     // converti le firme da stringhe esadecimali a oggetti Signature
@@ -92,7 +92,7 @@ async function main() {
             "proof": vc3.proof
         }
     })
-    console.log(`Credential verified`, result.verified)
+    //console.log(`Credential verified`, result.verified)
 
 
 }

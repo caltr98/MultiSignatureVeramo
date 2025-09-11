@@ -1,0 +1,36 @@
+Issuers,StepName,Size_bytes
+4,BLS Key Exchange,1176
+4,Claim Agreement,60
+4,Sig to OIss,776
+4,PoOs to OIss,536
+4,VC to Holder,21893
+8,BLS Key Exchange,5488
+8,Claim Agreement,280
+8,Sig to OIss,1552
+8,PoOs to OIss,1072
+8,VC to Holder,22929
+16,BLS Key Exchange,23520
+16,Claim Agreement,1200
+16,Sig to OIss,3104
+16,PoOs to OIss,2144
+16,VC to Holder,25001
+32,BLS Key Exchange,97216
+32,Claim Agreement,4960
+32,Sig to OIss,6208
+32,PoOs to OIss,4288
+32,VC to Holder,29145
+64,BLS Key Exchange,395136
+64,Claim Agreement,20160
+64,Sig to OIss,12416
+64,PoOs to OIss,8576
+64,VC to Holder,37433
+128,BLS Key Exchange,1593088
+128,Claim Agreement,81280
+128,Sig to OIss,24832
+128,PoOs to OIss,17152
+128,VC to Holder,54009
+256,BLS Key Exchange,6397440
+256,Claim Agreement,326400
+256,Sig to OIss,49664
+256,PoOs to OIss,34304
+256,VC to Holder,87161

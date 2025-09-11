@@ -427,8 +427,6 @@ export class CredentialPlugin implements IAgentPlugin {
 
         //FIXME: if the identifier is not found, the error message should reflect that.
          //issuer = extractIssuer({credential:{issuer:issuer}} as VerifiableCredential, { removeParameters: true })
-        console.log("issuer before issuer" +issuer)
-        console.log("issuer after issuer" +issuer)
         if (!issuer || typeof issuer === 'undefined') {
             throw new Error('invalid_argument: credential.issuer must not be empty')
         }
@@ -445,6 +443,8 @@ export class CredentialPlugin implements IAgentPlugin {
             if (proofFormat as ExtendedProofFormat === 'sign-bls-multi-signature'){
                 const key = pickSigningKey(identifier, keyRef)
 
+
+                //console.log("key got from pick"+JSON.stringify(key,null,2))
                 //debug('Signing VC with', identifier.did)
                 let alg = 'BLS_SIGNATURE'
 
@@ -486,9 +486,9 @@ export class CredentialPlugin implements IAgentPlugin {
         }
         //FIXME: if the identifier is not found, the error message should reflect that.
     //issuer = extractIssuer( {credential:{issuer:issuer}} as VerifiableCredential, { removeParameters: true })
-        console.log("issuer before issuer" +JSON.stringify(issuer,null,2))
+        //console.log("issuer before issuer" +JSON.stringify(issuer,null,2))
         issuer = issuer.id
-        console.log("issuer after issuer" +JSON.stringify(issuer,null,2))
+        //console.log("issuer after issuer" +JSON.stringify(issuer,null,2))
 
         if (!issuer || typeof issuer === 'undefined') {
             throw new Error('invalid_argument: credential.issuer must not be empty')

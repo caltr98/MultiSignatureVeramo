@@ -1,7 +1,16 @@
 // Core interfaces
 import { createAgent } from '@veramo/core';
-// Core identity manager plugin
-import { DIDManager } from '@veramo/did-manager';
+import { getResolver } from "ethr-did-resolver";
+//Alchemy is 100% better than Infura for Ethr DID provider
+const ethrResolverAlchemy = getResolver({
+    networks: [
+        {
+            name: 'sepolia',
+            rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/WrB3Vk1T7hkQzsi6u_oeRMNeoRrvFX80',
+            registry: '0x03d5003bf0e79C5F5223588F347ebA39AfbC3818',
+        },
+    ],
+});
 // Core key manager plugin
 import { KeyManager } from '@veramo/key-manager';
 import { BlsKeyManagementSystem } from "./../plugins/kms-local-bls/src/key-management-system-bls.js";
@@ -13,12 +22,11 @@ import { CredentialPlugin } from '../plugins/bls-extend-credential-w3c/src/actio
 // Custom resolvers
 import { DIDResolverPlugin } from '@veramo/did-resolver';
 import { Resolver } from 'did-resolver';
-import { getResolver as ethrDidResolver } from 'ethr-did-resolver';
-import { getResolver as webDidResolver } from 'web-did-resolver';
 // Storage plugin using TypeOrm
-import { Entities, KeyStore, DIDStore, PrivateKeyStore, migrations } from '@veramo/data-store';
+import { Entities, KeyStore, DIDStore, PrivateKeyStore, migrations, DataStore, } from '@veramo/data-store';
 // TypeORM is installed with `@veramo/data-store`
 import { DataSource } from 'typeorm';
+import { DIDManagerBls } from "../plugins/did-manager-bls/src/bls-id-manager.js";
 // This will be the name for the local sqlite database for demo purposes
 const DATABASE_FILE = 'database.sqlite';
 // You will need to get a project ID from infura https://www.infura.io
@@ -43,7 +51,7 @@ export const agent = createAgent({
                 local: new BlsKeyManagementSystem(new PrivateKeyStore(dbConnection, new SecretBox(KMS_SECRET_KEY))),
             },
         }),
-        new DIDManager({
+        new DIDManagerBls({
             store: new DIDStore(dbConnection),
             defaultProvider: 'did:ethr:sepolia',
             providers: {
@@ -51,16 +59,14 @@ export const agent = createAgent({
                     defaultKms: 'local',
                     network: 'sepolia',
                     registry: "0x03d5003bf0e79C5F5223588F347ebA39AfbC3818",
-                    rpcUrl: 'https://sepolia.infura.io/v3/' + INFURA_PROJECT_ID,
+                    rpcUrl: "https://eth-sepolia.g.alchemy.com/v2/WrB3Vk1T7hkQzsi6u_oeRMNeoRrvFX80"
                 }),
             },
         }),
         new DIDResolverPlugin({
-            resolver: new Resolver({
-                ...ethrDidResolver({ infuraProjectId: INFURA_PROJECT_ID }),
-                ...webDidResolver(),
-            }),
+            resolver: new Resolver(ethrResolverAlchemy),
         }),
         new CredentialPlugin(),
+        new DataStore(dbConnection), // <--- Required to store VC
     ],
 });

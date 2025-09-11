@@ -24,11 +24,11 @@ async function main() {
         ],
         services: [],
     });
-    console.log('✅ Imported DID:', identifier.did);
-    console.log(JSON.stringify(identifier, null, 2));
+    //console.log('✅ Imported DID:', identifier.did)
+    //console.log(JSON.stringify(identifier, null, 2))
     //const dummyKey = await agent.keyManagerCreate({kms: 'local', type: 'Bls12381G1'})
     const dummyKey = await agent.keyManagerCreate({ kms: 'local', type: 'Bls12381G1' });
     const addedKeyResult = await agent.didManagerAddKey({ did: identifier.did, key: dummyKey });
-    console.log(JSON.stringify(addedKeyResult, null, 2));
+    //ole.log(JSON.stringify(addedKeyResult, null, 2))
 }
 main().catch(console.log);

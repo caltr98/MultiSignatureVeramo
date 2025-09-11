@@ -113,8 +113,6 @@ export class BlsKeyManagementSystem extends AbstractKeyManagementSystem {
             }
             case "Bls12381G1": {
                 const secretKey = bls.SecretKey.fromKeygen();
-                //console.log(Buffer.from(secretKey.toBytes()).toString("hex"))
-                console.log(bytesToHex(secretKey.toBytes()))
                 key = await this.importKey({
                         type,
                         privateKeyHex: bytesToHex(secretKey.toBytes())

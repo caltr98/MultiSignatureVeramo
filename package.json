@@ -16,6 +16,7 @@
     "@veramo/core": "^6.0.0",
     "@veramo/credential-w3c": "^6.0.0",
     "@veramo/data-store": "^6.0.0",
+    "@veramo/data-store-json": "^6.0.0",
     "@veramo/did-manager": "^6.0.0",
     "@veramo/did-provider-ethr": "^6.0.0",
     "@veramo/did-resolver": "^6.0.0",

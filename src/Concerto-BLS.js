@@ -10,8 +10,8 @@ async function main() {
     const address2 = "0xc97F8bEb6A5abE8a1dA85AF4649f2eB356194fed";
     // 2. Usa chiave già creata
     //NOTE: YOU MUST CHANGE IT EVERYTIME YOU CREATE A NEW KEY AND YOU MUST RECOMPILE THE CODE
-    const kidAlreadyCreated = "a4a5fc45f76e61bba338a856bd2a9c0ca353e6dfbb7b97345022ad4bcb561a7df50fe53817cd11fdfc2083808ca92576";
-    const kidAlreadyCreated2 = "8caebe37bcc2b1ac81687c97daa7c5510ba6f01fdcab8a4a267fcda8699ddc54fe7de40fbbe007a689e1da866356550f";
+    const kidAlreadyCreated = "b910027d30d541ff738092fae8d898337a2c1979a5e4bdd6d009d51a6e74ae76bfdac11598ca79e9a646335d43138098";
+    const kidAlreadyCreated2 = "813e3adceb518fb51456d7be45abfff0388af7cd43d23bfa16d6d7fdf84aebdd5f8bdd4eef9eb01eaab15aada180da43";
     //3 Aggregazione delle keys
     let publicKey13 = bls.PublicKey.fromBytes(Buffer.from("a4a5fc45f76e61bba338a856bd2a9c0ca353e6dfbb7b97345022ad4bcb561a7df50fe53817cd11fdfc2083808ca92576", 'hex'));
     let publicKey23 = bls.PublicKey.fromBytes(Buffer.from("8caebe37bcc2b1ac81687c97daa7c5510ba6f01fdcab8a4a267fcda8699ddc54fe7de40fbbe007a689e1da866356550f", 'hex'));
