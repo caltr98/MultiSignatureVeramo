@@ -11,9 +11,16 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
+  "resolutions": {
+    "jsonld": "npm:jsonld@^8.3.2",
+    "@digitalcredentials/jsonld": "npm:jsonld@^8.3.2"
+  },
   "dependencies": {
     "@chainsafe/bls": "^8.1.0",
+    "@noble/curves": "1.0.0",
+    "@noble/hashes": "^1.0.0",
     "@veramo/core": "^6.0.0",
+    "@veramo/core-types": "^6.0.0",
     "@veramo/credential-w3c": "^6.0.0",
     "@veramo/data-store": "^6.0.0",
     "@veramo/data-store-json": "^6.0.0",
@@ -23,7 +30,13 @@
     "@veramo/key-manager": "^6.0.0",
     "@veramo/kms-local": "^6.0.0",
     "@veramo/utils": "^6.0.0",
+    "canonicalize": "^2.1.0",
     "debug": "^4.4.1",
+    "did-jwt": "^8.0.18",
+    "did-jwt-vc": "^4.0.16",
+    "did-resolver": "^4.1.0",
+    "ethers": "^6",
+    "ethr-did": "^3.0.38",
     "ethr-did-resolver": "^11.0.4",
     "reflect-metadata": "^0.2.2",
     "sqlite3": "^5.1.7",

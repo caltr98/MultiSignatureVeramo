@@ -29,14 +29,14 @@
     }
 
     // Parse command-line inputs with defaults
-    const claims_n = parseArg('claims', 32)
-    const claims_size = parseArg('size', 1024)
-    const n_issuers = parseArg('issuers', 12)
-    const RUNS = parseArg('runs', 10)
+    const claims_n = parseArg('claims', 2)
+    const claims_size = parseArg('size', 12)
+    const n_issuers = parseArg('issuers', 2)
+    const RUNS = parseArg('runs', 2)
 
 
     import {VerifiableCredential, VerifiablePresentation} from "@veramo/core-types";
-    import {createPresentation, storeCredential} from "./holder_test.js";
+    import {createSingleHolderPresentation, storeCredential} from "./holder_test.js";
     import {verifyMultiSignatureVC, verifyVP} from "./verifier_test.js";
 
     type BenchmarkResults = Record<string, number>
@@ -94,7 +94,7 @@
         await benchmarkStep('Store VC', timings, () => storeCredential(VC))
         let vp:any;
         await benchmarkStep('Create VP', timings, async () => {
-            vp = await createPresentation(VC, holder.did);
+            vp = await createSingleHolderPresentation(VC, holder.did);
             return vp;
         });
 

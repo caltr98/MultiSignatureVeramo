@@ -8,10 +8,10 @@ import {
 } from "./issuers_test.js";
 import {createAgent, IMessage, PresentationPayload} from "@veramo/core";
 import {agent} from "../veramo/setup.js";
-const claims_n = 32
-const claims_size = 1024
-import {VerifiableCredential} from "@veramo/core-types";
-import {createPresentation, storeCredential} from "./holder_test.js";
+const claims_n = 2
+const claims_size = 14
+import {VerifiableCredential, VerifiablePresentation} from "@veramo/core-types";
+import {createSingleHolderPresentation, storeCredential} from "./holder_test.js";
 import {verifyMultiSignatureVC, verifyVP} from "./verifier_test.js";
 
 type BenchmarkResults = Record<string, number>
@@ -34,7 +34,7 @@ import {wrongPayloadInProofOfOwnership} from "./securityCases/wrongPayloadInProo
 import {performance} from "node:perf_hooks";
 //create all agents for issuer, holder, and verifier
 //50 issuer is a NO-GO when using INFURA!
-const issuers = await setup_bls_agents(300);
+const issuers = await setup_bls_agents(2);
 
 const holder = (await setup_bls_agents(1))[0];
 
@@ -61,14 +61,20 @@ await benchmarkStep('Store VC', timings, async () => {
     return storeCredential(VC)
 })
 
+
+let vp:any;
 // --- Create VP (Holder) ---
 await benchmarkStep('Create VP', timings, async () => {
-    return createPresentation(VC, holder.did)
+    vp = await createSingleHolderPresentation(VC, holder.did)
+    return vp
 })
+
+
+console.log("VP"+JSON.stringify(vp,null,2))
 
 // --- Verify VP (Verifier) ---
 await benchmarkStep('Verify VP', timings, async () => {
-    return verifyVP(await createPresentation(VC, holder.did))
+    return verifyVP( vp)
 })
 
 

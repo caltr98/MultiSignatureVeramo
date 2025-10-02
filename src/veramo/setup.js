@@ -6,7 +6,7 @@ const ethrResolverAlchemy = getResolver({
     networks: [
         {
             name: 'sepolia',
-            rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/WrB3Vk1T7hkQzsi6u_oeRMNeoRrvFX80',
+            rpcUrl: 'http://127.0.0.1:8545',
             registry: '0x03d5003bf0e79C5F5223588F347ebA39AfbC3818',
         },
     ],

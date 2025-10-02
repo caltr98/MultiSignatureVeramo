@@ -39,6 +39,7 @@ async function getBlsPublicKey(kid: string) {
     return bls.PublicKey.fromBytes(Buffer.from(key.publicKeyHex, 'hex'))
 }
 
+
 async function getBlsKeyHex(kid: string) {
     const key = await agent.keyManagerGet({ kid })
     return key.publicKeyHex
@@ -117,6 +118,17 @@ export async function createProofsOfOwnershipPerIssuer(
     }
     return proofs
 }
+
+export async function createProofsOfPossessionPerIssuer(
+    kid: string,
+    nonce: string,
+): Promise<string> {
+    let messagePoP = getBlsPublicKey(kid)+""+nonce
+    const PoP = await agent.keyManagerSign({keyRef: kid, data: messagePoP,
+            algorithm : "BLS_SIGNATURE", encoding: "utf-8" })
+    return PoP
+}
+
 
 export async function VCAggregateKeysToSignatures(
     issuers: AgentInfo[],

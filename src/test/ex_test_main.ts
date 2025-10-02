@@ -11,7 +11,7 @@ import {agent} from "../veramo/setup.js";
 const claims_n = 4
 const claims_size = 4
 import {VerifiableCredential} from "@veramo/core-types";
-import {createPresentation, storeCredential} from "./holder_test.js";
+import {createSingleHolderPresentation, storeCredential} from "./holder_test.js";
 import {verifyMultiSignatureVC, verifyVP} from "./verifier_test.js";
 import {missOneSignatureVCAggregateKeysToSignatures} from "./securityCases/missingOneSignature.js";
 import {ChangePayloadSignatureVCAggregateKeysToSignatures} from "./securityCases/changingThePayload.js";
@@ -37,7 +37,7 @@ console.log(res.timings)
 
 const storing = await storeCredential(VC)
 
-const VP = await createPresentation(VC, holder.did)
+const VP = await createSingleHolderPresentation(VC, holder.did)
 
 
 let result = await verifyVP(VP)

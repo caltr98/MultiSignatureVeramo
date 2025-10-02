@@ -31,7 +31,7 @@ const n_issuers = parseArg('issuers', 12)
 const RUNS = parseArg('runs', 10)
 
 import {VerifiableCredential, VerifiablePresentation} from "@veramo/core-types";
-import {createPresentation, storeCredential} from "./holder_test.js";
+import {createSingleHolderPresentation, storeCredential} from "./holder_test.js";
 import {verifyMultiSignatureVC, verifyVP} from "./verifier_test.js";
 
 type BenchmarkResults = Record<string, number>

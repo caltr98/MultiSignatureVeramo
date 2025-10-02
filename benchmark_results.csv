@@ -106,3 +106,15 @@
 4,BLS Signature Verification,9.073810,0.750025
 4,DID DocumentS Resolution,224.160985,10.162187
 4,Proofs of Ownership Verification,38.025826,1.544651
+2,Aggregate BLS keys,1.927369,0.319391
+2,Generate VC payload,0.139775,0.111281
+2,Sign with N issuer,17.777083,2.089299
+2,Aggregate BLS signatures,3.913913,0.566657
+2,Generate N PoOs,14.776064,4.700141
+2,Create final VC,4.911764,1.085082
+2,Store VC,30.237869,1.366008
+2,Create VP,20.814845,16.176649
+2,Verify VP,219.023038,61.643059
+2,BLS Signature Verification,9.615135,0.836570
+2,DID DocumentS Resolution,156.873598,0.273666
+2,Proofs of Ownership Verification,8.529006,3.972303
