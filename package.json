@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
-  "repository": "https://github.com/veramolabs/veramo-nodejs-tutorial.git",
-  "author": "caltr98 <calogeroturco98@gmail.com>",
+  "repository": "repo",
+  "author": "anon",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^24.0.3",
