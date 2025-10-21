@@ -17,6 +17,9 @@ To test the multisignature functionality, you can use the following scripts:
 * signature-with-bls.ts: signs a simple message with a bls key
 
 # Usage
+Install requirements with:
+* npm install
+Then compile and run:
 * npx tsc --resolveJsonModule to compile the typescript files to js files.
 * yarn ts-node --esm ./src/script.js 
 
