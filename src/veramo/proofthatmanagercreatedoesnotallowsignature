@@ -39,7 +39,7 @@ async function createProofsOfOwnershipPerIssuer(
         console.log("wtf wtf wtf did is:"+did1+ "recovered: "+recoveredAddress)
     }
     else{
-        console.log("\n\n\n\nepic angry calogero scream \n\n\n\n")
+        console.log("\n\n\n\nepic angry scream \n\n\n\n")
     }
 
 
