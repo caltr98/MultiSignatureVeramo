@@ -19,6 +19,7 @@ To test the multisignature functionality, you can use the following scripts:
 # Usage
 Install requirements with:
 * npm install
+
 Then compile and run:
 * npx tsc --resolveJsonModule to compile the typescript files to js files.
 * yarn ts-node --esm ./src/script.js 
