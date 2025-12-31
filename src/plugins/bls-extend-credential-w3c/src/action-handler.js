@@ -3,7 +3,7 @@
 import { schema } from '@veramo/core-types';
 import { createVerifiableCredentialJwt, createVerifiablePresentationJwt, normalizeCredential, normalizePresentation, verifyCredential as verifyCredentialJWT, verifyPresentation as verifyPresentationJWT, } from 'did-jwt-vc';
 import { decodeJWT } from 'did-jwt';
-import { asArray, extractIssuer, removeDIDParameters, isDefined, MANDATORY_CREDENTIAL_CONTEXT, processEntryToArray, intersect, } from '@veramo/utils';
+import { asArray, bytesToHex, extractIssuer, hexToBytes, removeDIDParameters, isDefined, MANDATORY_CREDENTIAL_CONTEXT, processEntryToArray, intersect, } from '@veramo/utils';
 import canonicalize from 'canonicalize';
 var DocumentFormat;
 (function (DocumentFormat) {
@@ -14,7 +14,31 @@ var DocumentFormat;
 })(DocumentFormat || (DocumentFormat = {}));
 import { createVerifiableCredentialBls, verifyCredentialBls, signMultiSignatureVerifiableCredentialBls, aggregateMultiSignatureVerifiableCredentialBls, verifyCredentialMultiSignatureBls, generateProofOfOwnershipMultiIssuerVerifiableCredentialBls, verifyCredentialProofOfOwnershipMultiSignatureBls } from './bls-credentials.js';
 import { signMultiSignatureVerifiablePresentationBls, aggregateMultiSignatureVerifiablePresentationBls, verifyPresentationMultiSignatureBls, generateProofOfOwnershipMultiIssuerVerifiablePresentationBls, verifyPresentationProofOfOwnershipMultiSignatureBls, } from './bls-presentations.js';
-import bls from "@chainsafe/bls";
+function resolveBlsBackend(value) {
+    return value === 'noble' ? 'noble' : 'chainsafe';
+}
+function readEnv(name) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = typeof process !== 'undefined' ? process : undefined;
+    return p?.env?.[name];
+}
+function strip0x(hex) {
+    return hex.startsWith('0x') ? hex.slice(2) : hex;
+}
+let chainsafeBlsPromise;
+async function getChainsafeBls() {
+    if (!chainsafeBlsPromise) {
+        chainsafeBlsPromise = import('@chainsafe/bls').then((m) => m?.default ?? m);
+    }
+    return chainsafeBlsPromise;
+}
+let nobleBlsPromise;
+async function getNobleBls() {
+    if (!nobleBlsPromise) {
+        nobleBlsPromise = import('@noble/curves/bls12-381').then((m) => m.bls12_381);
+    }
+    return nobleBlsPromise;
+}
 /**
  * A Veramo plugin that implements the {@link @veramo/core-types#ICredentialPlugin | ICredentialPlugin} methods.
  *
@@ -22,6 +46,7 @@ import bls from "@chainsafe/bls";
  */
 export class CredentialPlugin {
     methods;
+    blsBackend;
     schema = {
         components: {
             schemas: {
@@ -108,7 +133,8 @@ export class CredentialPlugin {
             },
         },
     };
-    constructor() {
+    constructor(options) {
+        this.blsBackend = options?.blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'));
         this.methods = {
             createVerifiablePresentation: this.createVerifiablePresentation.bind(this),
             createVerifiableCredential: this.createVerifiableCredential.bind(this),
@@ -139,7 +165,7 @@ export class CredentialPlugin {
         const type = 3;
         if (type === 3) {
             try {
-                verificationResult = await verifyCredentialMultiSignatureBls(credential, context, otherOptions?.resolutionOptions);
+                verificationResult = await verifyCredentialMultiSignatureBls(credential, context, otherOptions?.resolutionOptions, this.blsBackend);
                 return verificationResult;
             }
             catch (e) {
@@ -162,7 +188,7 @@ export class CredentialPlugin {
         const type = 3;
         if (type === 3) {
             try {
-                verificationResult = await verifyCredentialProofOfOwnershipMultiSignatureBls(credential, context, otherOptions?.resolutionOptions);
+                verificationResult = await verifyCredentialProofOfOwnershipMultiSignatureBls(credential, context, otherOptions?.resolutionOptions, this.blsBackend);
                 return verificationResult;
             }
             catch (e) {
@@ -258,13 +284,18 @@ export class CredentialPlugin {
     //ADDED NEW FUNCTION for aggregating BLS public keys to have 1 aggregate public key
     /** {@inheritdoc @veramoNULL} */
     async aggregateBlsPublicKeys(args, context) {
-        // Convert each hex string to a bls.PublicKey instance
-        const publicKeys = args.list_of_publicKeyHex.map(hex => bls.PublicKey.fromBytes(Buffer.from(hex.trim(), 'hex')));
-        // Aggregate all public keys
-        const aggregatedKey = Buffer.from(bls.aggregatePublicKeys(publicKeys)).toString("hex");
-        return {
-            bls_aggregated_pubkey: aggregatedKey
-        };
+        if (this.blsBackend === 'noble') {
+            const bls = await getNobleBls();
+            const publicKeys = args.list_of_publicKeyHex.map((hex) => hexToBytes(strip0x(hex.trim())));
+            const aggregatedKey = bls.aggregatePublicKeys(publicKeys);
+            return { bls_aggregated_pubkey: bytesToHex(aggregatedKey) };
+        }
+        else {
+            const bls = await getChainsafeBls();
+            const publicKeys = args.list_of_publicKeyHex.map((hex) => bls.PublicKey.fromBytes(Buffer.from(hex.trim(), 'hex')));
+            const aggregatedKey = bls.aggregatePublicKeys(publicKeys);
+            return { bls_aggregated_pubkey: bytesToHex(aggregatedKey) };
+        }
     }
     //ADDED NEW FUNCTION for signign multi-issued credentials with BLS
     /** {@inheritdoc @veramoNULL} */
@@ -377,7 +408,7 @@ export class CredentialPlugin {
         try {
             let signedVerifiableCredential;
             if (proofFormat === 'ProofOfOwnership-aggregate-bls-multi-signature') {
-                signedVerifiableCredential = await generateProofOfOwnershipMultiIssuerVerifiableCredentialBls(credential, proofsOfOwnership, signatures);
+                signedVerifiableCredential = await generateProofOfOwnershipMultiIssuerVerifiableCredentialBls(credential, proofsOfOwnership, signatures, undefined, this.blsBackend);
                 return signedVerifiableCredential;
             }
             else {
@@ -480,7 +511,7 @@ export class CredentialPlugin {
         const type = detectDocumentType(credential);
         if (type === 3 /* DocumentFormat.BLS */) {
             try {
-                verificationResult = await verifyCredentialBls(credential, context, otherOptions?.resolutionOptions);
+                verificationResult = await verifyCredentialBls(credential, context, otherOptions?.resolutionOptions, this.blsBackend);
                 return verificationResult;
             }
             catch (e) {
@@ -758,7 +789,15 @@ export class CredentialPlugin {
         const managed = (await context.agent.didManagerFind())[0];
         if (!managed)
             throw new Error('no_managed_did: required for aggregation');
-        const key = pickSigningKey(managed, keyRef);
+        const key = keyRef
+            ? pickSigningKey(managed, keyRef)
+            : (() => {
+                const blsKey = managed.keys.find((k) => k.type === 'Bls12381G1');
+                if (!blsKey) {
+                    throw new Error(`key_not_found: No Bls12381G1 key for aggregation on ${managed.did}`);
+                }
+                return blsKey;
+            })();
         const alg = 'BLS_AGGREGATE_MULTI_SIGNATURE';
         const signer = wrapSigner(context, key, alg);
         const vp = await aggregateMultiSignatureVerifiablePresentationBls(normalized, { did: managed.did, signer, alg }, signatures, { ...otherOptions });
@@ -770,18 +809,18 @@ export class CredentialPlugin {
         const presCtx = processEntryToArray(presentation['@context'], MANDATORY_CREDENTIAL_CONTEXT);
         const presType = processEntryToArray(presentation.type, 'VerifiablePresentation');
         const normalized = { ...presentation, '@context': presCtx, type: presType };
-        const vp = await generateProofOfOwnershipMultiIssuerVerifiablePresentationBls(normalized, proofsOfOwnership, signatures);
+        const vp = await generateProofOfOwnershipMultiIssuerVerifiablePresentationBls(normalized, proofsOfOwnership, signatures, undefined, this.blsBackend);
         return vp;
     }
     // 4.4 Verify aggregated BLS on multi-holder VP
     async verifyMultisignaturePresentation(args, context) {
         const { presentation, ...otherOptions } = args;
-        return await verifyPresentationMultiSignatureBls(presentation, context, otherOptions?.resolutionOptions);
+        return await verifyPresentationMultiSignatureBls(presentation, context, otherOptions?.resolutionOptions, this.blsBackend);
     }
     // 4.5 Verify PoO + aggregated BLS on multi-holder VP
     async verifyProofOfOwnershipMultisignaturePresentation(args, context) {
         const { presentation, ...otherOptions } = args;
-        return await verifyPresentationProofOfOwnershipMultiSignatureBls(presentation, context, otherOptions?.resolutionOptions);
+        return await verifyPresentationProofOfOwnershipMultiSignatureBls(presentation, context, otherOptions?.resolutionOptions, this.blsBackend);
     }
 }
 function pickSigningKey(identifier, keyRef) {

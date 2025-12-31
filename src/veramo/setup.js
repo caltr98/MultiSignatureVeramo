@@ -6,7 +6,7 @@ const ethrResolverAlchemy = getResolver({
     networks: [
         {
             name: 'sepolia',
-            rpcUrl: 'http://127.0.0.1:8545',
+            rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/WrB3Vk1T7hkQzsi6u_oeRMNeoRrvFX80',
             registry: '0x03d5003bf0e79C5F5223588F347ebA39AfbC3818',
         },
     ],
@@ -29,6 +29,15 @@ import { DataSource } from 'typeorm';
 import { DIDManagerBls } from "../plugins/did-manager-bls/src/bls-id-manager.js";
 // This will be the name for the local sqlite database for demo purposes
 const DATABASE_FILE = 'database.sqlite';
+function resolveBlsBackend(value) {
+    return value === 'noble' ? 'noble' : 'chainsafe';
+}
+function readEnv(name) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = typeof process !== 'undefined' ? process : undefined;
+    return p?.env?.[name];
+}
+const BLS_BACKEND = resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'));
 // You will need to get a project ID from infura https://www.infura.io
 const INFURA_PROJECT_ID = '77b6397329f849c0b5746b7da777c7dd';
 // This will be the secret key for the KMS
@@ -48,7 +57,7 @@ export const agent = createAgent({
         new KeyManager({
             store: new KeyStore(dbConnection),
             kms: {
-                local: new BlsKeyManagementSystem(new PrivateKeyStore(dbConnection, new SecretBox(KMS_SECRET_KEY))),
+                local: new BlsKeyManagementSystem(new PrivateKeyStore(dbConnection, new SecretBox(KMS_SECRET_KEY)), { blsBackend: BLS_BACKEND }),
             },
         }),
         new DIDManagerBls({
@@ -66,7 +75,7 @@ export const agent = createAgent({
         new DIDResolverPlugin({
             resolver: new Resolver(ethrResolverAlchemy),
         }),
-        new CredentialPlugin(),
+        new CredentialPlugin({ blsBackend: BLS_BACKEND }),
         new DataStore(dbConnection), // <--- Required to store VC
     ],
 });

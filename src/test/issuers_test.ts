@@ -1,5 +1,4 @@
 import { agent } from '../veramo/setup.js'
-import bls from "@chainsafe/bls"
 import { ethers } from 'ethers'
 
 
@@ -27,6 +26,7 @@ import {
 import {MinimalImportableKey} from "@veramo/core-types";
 import canonicalize from "canonicalize";
 import {ProofType, UnsignedCredential} from "@veramo/core";
+import { ICreateVerifiableCredentialArgs, VerifiableCredential } from '@veramo/core-types'
 
 interface AgentInfo {
     did: string
@@ -34,9 +34,9 @@ interface AgentInfo {
     bls_pub_key: string
 }
 
-async function getBlsPublicKey(kid: string) {
+async function getBlsPublicKeyHex(kid: string): Promise<string> {
     const key = await agent.keyManagerGet({ kid })
-    return bls.PublicKey.fromBytes(Buffer.from(key.publicKeyHex, 'hex'))
+    return key.publicKeyHex
 }
 
 
@@ -123,7 +123,8 @@ export async function createProofsOfPossessionPerIssuer(
     kid: string,
     nonce: string,
 ): Promise<string> {
-    let messagePoP = getBlsPublicKey(kid)+""+nonce
+    const publicKeyHex = await getBlsPublicKeyHex(kid)
+    const messagePoP = publicKeyHex + nonce
     const PoP = await agent.keyManagerSign({keyRef: kid, data: messagePoP,
             algorithm : "BLS_SIGNATURE", encoding: "utf-8" })
     return PoP
@@ -148,20 +149,6 @@ export async function VCAggregateKeysToSignatures(
     const signaturesHexAndSignatures = await signPayloadWithIssuers(payload, issuers)
     const signaturesHex = signaturesHexAndSignatures.signatures as string[]
     const signaturesPayloadSigned = signaturesHexAndSignatures.payloads as string[]
-
-    // 3. Aggregate BLS signatures
-    const signatureObjs = signaturesHex.map(sigHex => bls.Signature.fromHex(sigHex))
-    const aggregatedSignature = bls.aggregateSignatures(signatureObjs)
-
-
-    // 4. DEBUG TEST Verify aggregated signature using verifyAggregate
-    //const pubKeys = await Promise.all(issuers.map(i => bls.PublicKey.fromBytes(Buffer.from(i.bls_pub_key,"hex"))))
-
-
-    //debug test
-    //const isValidAgg = bls.verifyAggregate(pubKeys, Uint8Array.from(Buffer.from(signaturesPayloadSigned[0], 'utf-8')), aggregatedSignature)
-
-
 
     // 5. PoO (Proofs of Ownership)
     const proofsOfOwnership = await createProofsOfOwnershipPerIssuer(issuers, holder, payload)
@@ -198,8 +185,45 @@ export async function VCAggregateKeysToSignatures(
     return vcFull;
 }
 
+/**
+ * Create a multi-issuer VC with aggregated BLS signature (NO Proofs-of-Ownership).
+ * This is the "plain multisig VC" counterpart of {@link VCAggregateKeysToSignatures}.
+ */
+export async function VCAggregateKeysToSignaturesNoPoO(
+    issuers: AgentInfo[],
+    holder: string,
+    claimCount: number,
+    valueSize: number,
+    seed = 42,
+): Promise<VerifiableCredential> {
+    const aggregatedBlsKey = await getAndAggregateBlsKeys(issuers)
+
+    const payload = await generatePayloadToSign(issuers, holder, aggregatedBlsKey, claimCount, valueSize, seed)
+
+    // IMPORTANT: non-PoO VC flow currently canonicalizes without aggregated_bls_public_key on verify side.
+    // Keep payload parity by removing it here.
+    const payloadNoAggKey = { ...(payload as any) }
+    delete (payloadNoAggKey as any).aggregated_bls_public_key
+
+    const signaturesHexAndSignatures = await signPayloadWithIssuers(payloadNoAggKey, issuers)
+    const signaturesHex = signaturesHexAndSignatures.signatures as string[]
+
+    const vc = await agent.createMultiIssuerVerifiableCredential({
+        credential: payloadNoAggKey,
+        issuer: { id: issuers[0].did },
+        proofFormat: 'aggregate-bls-multi-signature',
+        keyRef: issuers[0].kid_bls,
+        signatures: signaturesHex,
+    } as unknown as ICreateVerifiableCredentialArgs & {
+        proofFormat: 'aggregate-bls-multi-signature'
+        signatures: string[]
+    })
+
+    return vc as VerifiableCredential
+}
+
 export {
-    getBlsPublicKey,
+    getBlsPublicKeyHex as getBlsPublicKey,
     getBlsKeyHex,
     aggregateBlsKeys,
     generatePayloadToSign,
@@ -241,10 +265,7 @@ export async function VCAggregateKeysToSignaturesWithBenchmark(
 
 
 
-    await benchmarkStep('Aggregate BLS signatures', timings, async () => {
-        const signatureObjs = signaturesHex.map(sigHex => bls.Signature.fromHex(sigHex))
-        bls.aggregateSignatures(signatureObjs)
-    })
+    // NOTE: signature aggregation is performed by the agent/plugin (backend-dependent)
 
     // Measure generation of all PoOs
     const proofsOfOwnership = await benchmarkStep('Generate N PoOs', timings, async () => {
@@ -318,10 +339,15 @@ export async function VCAggregateKeysToSignaturesWithSizes(
     sizes['Sig to OIss'] = signatures.length * sizes['Signature (1 BLS)'];
 
     // Step 5: Aggregate BLS signatures
-    const sigObjs = signaturesHex.map(sigHex => bls.Signature.fromHex(sigHex));
-    const aggSig = bls.aggregateSignatures(sigObjs);
-    intermediates['aggregatedBlsSig'] = aggSig;
-    sizes['Aggregated BLS Signature'] = measure(aggSig);
+    // NOTE: perform aggregation through the agent (backend-dependent) to avoid hard-coding ChainSafe/noble here
+    const aggregatedSigHex = await agent.keyManagerSign({
+        keyRef: issuers[0].kid_bls,
+        algorithm: 'BLS_AGGREGATE_MULTI_SIGNATURE',
+        data: JSON.stringify({ signatures: signaturesHex }),
+        encoding: 'utf-8',
+    } as any)
+    intermediates['aggregatedBlsSigHex'] = aggregatedSigHex
+    sizes['Aggregated BLS Signature'] = measure(aggregatedSigHex)
 
     // Step 6: Generate PoOs
     const proofsOfOwnership = await createProofsOfOwnershipPerIssuer(issuers, holder, payload);

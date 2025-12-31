@@ -8,6 +8,9 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^24.0.3",
+    "@types/body-parser": "^1.19.6",
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
@@ -32,7 +35,9 @@
     "@veramo/key-manager": "^6.0.0",
     "@veramo/kms-local": "^6.0.0",
     "@veramo/utils": "^6.0.0",
+    "body-parser": "^1.20.3",
     "canonicalize": "^2.1.0",
+    "cors": "^2.8.5",
     "debug": "^4.4.1",
     "did-jwt": "^8.0.18",
     "did-jwt-vc": "^4.0.16",
@@ -40,6 +45,7 @@
     "ethers": "^6",
     "ethr-did": "^3.0.38",
     "ethr-did-resolver": "^11.0.4",
+    "express": "^4.21.2",
     "langchain": "^0.3.11",
     "openai": "^4.78.0",
     "reflect-metadata": "^0.2.2",
@@ -47,5 +53,11 @@
     "typeorm": "^0.3.25",
     "uuid": "^11.1.0",
     "web-did-resolver": "^2.0.30"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "server:build": "tsc -p tsconfig.json",
+    "server:start": "node src/server-demo/veramo-server.js",
+    "server:client": "node src/server-demo/client.js"
   }
 }

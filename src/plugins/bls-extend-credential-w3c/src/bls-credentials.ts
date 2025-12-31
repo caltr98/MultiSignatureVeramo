@@ -1,9 +1,8 @@
 //NEW ALL: LOGIC FOR BLS SIGNATURE ISSUING AND VERIFICATION
 
 import { DIDResolutionOptions, VerifiableCredential, IVerifyResult, VerifierAgentContext } from '@veramo/core-types'
-import bls  from '@chainsafe/bls'
 import canonicalize from 'canonicalize'
-import { hexToBytes } from '@veramo/utils'
+import { bytesToHex, hexToBytes } from '@veramo/utils'
 import {MultiIssuerVerifiableCredential, ProofOfOwnershipMultiIssuerVerifiableCredential} from "./action-handler";
 import {agent} from "../../../veramo/setup";
 import { verifyMessage } from 'ethers';
@@ -16,10 +15,43 @@ import {sha256} from "@noble/hashes/sha256";
  */
 import {performance} from "node:perf_hooks";
 
+type BlsBackend = 'chainsafe' | 'noble'
+
+function resolveBlsBackend(value: unknown): BlsBackend {
+    return value === 'noble' ? 'noble' : 'chainsafe'
+}
+
+function readEnv(name: string): string | undefined {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p: any = typeof process !== 'undefined' ? process : undefined
+    return p?.env?.[name]
+}
+
+function strip0x(hex: string): string {
+    return hex.startsWith('0x') ? hex.slice(2) : hex
+}
+
+let chainsafeBlsPromise: Promise<any> | undefined
+async function getChainsafeBls(): Promise<any> {
+    if (!chainsafeBlsPromise) {
+        chainsafeBlsPromise = import('@chainsafe/bls').then((m: any) => m?.default ?? m)
+    }
+    return chainsafeBlsPromise
+}
+
+let nobleBlsPromise: Promise<any> | undefined
+async function getNobleBls(): Promise<any> {
+    if (!nobleBlsPromise) {
+        nobleBlsPromise = import('@noble/curves/bls12-381').then((m: any) => m.bls12_381)
+    }
+    return nobleBlsPromise
+}
+
 export async function verifyCredentialProofOfOwnershipMultiSignatureBls(
     credential: ProofOfOwnershipMultiIssuerVerifiableCredential,
     context: VerifierAgentContext,
-    resolutionOptions?: DIDResolutionOptions
+    resolutionOptions?: DIDResolutionOptions,
+    blsBackend?: BlsBackend,
 ): Promise<IVerifyResult & { timings?: Record<string, number> }> {
 
     const timings: Record<string, number> = {};
@@ -42,6 +74,7 @@ export async function verifyCredentialProofOfOwnershipMultiSignatureBls(
 
     try {
         const t0 = performance.now();
+        const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
 
         const payloadToVerify = {
             '@context': credential['@context'],
@@ -57,8 +90,26 @@ export async function verifyCredentialProofOfOwnershipMultiSignatureBls(
 
         // --- BLS Signature Verification ---
         const t1 = performance.now();
-        const aggregatedPublicKey = bls.PublicKey.fromHex(credential.aggregated_bls_public_key);
-        const firstVerify = bls.verify(aggregatedPublicKey, message, hexToBytes(proof.signatureValue));
+        if (proof.type !== 'ProofOfOwnershipBlsMultiSignaturePisa') {
+            return {
+                verified: false,
+                error: {
+                    message: `Invalid proof.type. Expected 'ProofOfOwnershipBlsMultiSignaturePisa' but got '${proof.type}'`,
+                    errorCode: 'invalid_proof',
+                },
+                timings,
+            }
+        }
+
+        const signatureBytes = hexToBytes(strip0x(proof.signatureValue))
+        const firstVerify =
+            backend === 'noble'
+                ? await (await getNobleBls()).verify(signatureBytes, message, hexToBytes(strip0x(credential.aggregated_bls_public_key)))
+                : await (await getChainsafeBls()).verify(
+                      (await getChainsafeBls()).PublicKey.fromHex(strip0x(credential.aggregated_bls_public_key)),
+                      message,
+                      signatureBytes,
+                  )
         const t2 = performance.now();
         timings["BLS Signature Verification"] = t2 - t1;
 
@@ -205,7 +256,8 @@ export async function aggregateMultiSignatureVerifiableCredentialBls(
 // NEW: aggregate OF MULTI-SIGNATURE to make Multi Signature Verifiable Credential
 export async function generateProofOfOwnershipMultiIssuerVerifiableCredentialBls(
     credential: any, proofs_of_ownership:any,list_of_signatures: string[],
-    settings?: string[]
+    settings?: string[],
+    blsBackend?: BlsBackend,
 ):Promise<any> {
 
 
@@ -223,11 +275,17 @@ export async function generateProofOfOwnershipMultiIssuerVerifiableCredentialBls
 
 
 
-    // convert signature strings from hex to objects signatures
-    const signatureObjs = list_of_signatures.map(sigHex => bls.Signature.fromHex(sigHex))
-
-    // aggregate signatures and turn into Hex
-    const aggregatedSignature = Buffer.from(bls.aggregateSignatures(signatureObjs)).toString("hex")
+    const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
+    let aggregatedSignature: string
+    if (backend === 'noble') {
+        const bls = await getNobleBls()
+        aggregatedSignature = bytesToHex(bls.aggregateSignatures(list_of_signatures.map((h) => hexToBytes(strip0x(h)))))
+    } else {
+        const bls = await getChainsafeBls()
+        aggregatedSignature = bytesToHex(
+            bls.aggregateSignatures(list_of_signatures.map((h) => bls.Signature.fromHex(strip0x(h)))),
+        )
+    }
 
 
 
@@ -356,7 +414,8 @@ export async function createVerifiableCredentialBls(
 export async function verifyCredentialBls(
     credential: VerifiableCredential,
     context: VerifierAgentContext,
-    resolutionOptions?: DIDResolutionOptions
+    resolutionOptions?: DIDResolutionOptions,
+    blsBackend?: BlsBackend,
 ): Promise<IVerifyResult> {
     const proof = credential.proof
     if (!proof || !proof.type || !proof.signatureValue) {
@@ -372,7 +431,7 @@ export async function verifyCredentialBls(
     const isAggregate = Array.isArray(proof.verificationMethod)
     const methods = isAggregate ? proof.verificationMethod : [proof.verificationMethod]
     const signatureHex = proof.signatureValue
-    const signature = bls.Signature.fromHex(signatureHex)
+    const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
 
     try {
         // Canonicalize VC payload without proof
@@ -408,13 +467,31 @@ export async function verifyCredentialBls(
                 if (!hex) {
                     throw new Error(`Missing public key for ${method}`)
                 }
-                return bls.PublicKey.fromHex(hex)
+                return backend === 'noble' ? hexToBytes(strip0x(hex)) : (await getChainsafeBls()).PublicKey.fromHex(strip0x(hex))
             })
         )
 
-        const verified = isAggregate
-            ? bls.verifyAggregate(resolvedKeys, message, signature)
-            : bls.verify(resolvedKeys[0], message, signature)
+        const signatureBytes = hexToBytes(strip0x(signatureHex))
+        const verified =
+            backend === 'noble'
+                ? isAggregate
+                    ? (await getNobleBls()).verify(
+                          signatureBytes,
+                          message,
+                          (await getNobleBls()).aggregatePublicKeys(resolvedKeys),
+                      )
+                    : (await getNobleBls()).verify(signatureBytes, message, resolvedKeys[0])
+                : isAggregate
+                  ? (await getChainsafeBls()).verifyAggregate(
+                        resolvedKeys,
+                        message,
+                        (await getChainsafeBls()).Signature.fromHex(strip0x(signatureHex)),
+                    )
+                  : (await getChainsafeBls()).verify(
+                        resolvedKeys[0],
+                        message,
+                        (await getChainsafeBls()).Signature.fromHex(strip0x(signatureHex)),
+                    )
 
 
         return verified
@@ -444,7 +521,8 @@ export async function verifyCredentialBls(
 export async function verifyCredentialMultiSignatureBls(
     credential: MultiIssuerVerifiableCredential,
     context: VerifierAgentContext,
-    resolutionOptions?: DIDResolutionOptions
+    resolutionOptions?: DIDResolutionOptions,
+    blsBackend?: BlsBackend,
 ): Promise<IVerifyResult> {
     const proof = credential.proof
     if (!proof || !proof.type || !proof.signatureValue) {
@@ -463,8 +541,19 @@ export async function verifyCredentialMultiSignatureBls(
     }
     const methods = isAggregate ? proof.verificationMethod : [proof.verificationMethod]
     const signatureHex = proof.signatureValue
+    const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
 
     try {
+        if (proof.type !== 'BlsMultiSignaturePisa') {
+            return {
+                verified: false,
+                error: {
+                    message: `Invalid proof.type. Expected 'BlsMultiSignaturePisa' but got '${proof.type}'`,
+                    errorCode: 'invalid_proof',
+                },
+            }
+        }
+
         // Canonicalize VC payload without proof
 
         const payload = canonicalize({
@@ -477,8 +566,7 @@ export async function verifyCredentialMultiSignatureBls(
         if (!payload) throw new Error('Failed to canonicalize VC')
 
         const message = Uint8Array.from(Buffer.from(payload, 'utf-8'))
-
-        const signature = bls.Signature.fromHex(signatureHex)
+        const signatureBytes = hexToBytes(strip0x(signatureHex))
 
 
         // Resolve all verification methods
@@ -501,14 +589,25 @@ export async function verifyCredentialMultiSignatureBls(
                 if (!hex) {
                     throw new Error(`Missing public key for ${method}`)
                 }
-                return bls.PublicKey.fromHex(hex)
+                return backend === 'noble' ? hexToBytes(strip0x(hex)) : (await getChainsafeBls()).PublicKey.fromHex(strip0x(hex))
             })
         )
 
         //THERE IS THE POSSIBILITY OF AGGREGATING THE PUBLIC KEYS AND THEN TO verify
         //const aggregatedKeys = bls.aggregatePublicKeys(resolvedKeys)
         //const verified = bls.verify(aggregatedKeys, Buffer.from( payload,'utf-8'), signature)
-        const verified = bls.verifyAggregate(resolvedKeys, Buffer.from( payload,'utf-8'),signature)
+        const verified =
+            backend === 'noble'
+                ? (await getNobleBls()).verify(
+                      signatureBytes,
+                      Buffer.from(payload, 'utf-8'),
+                      (await getNobleBls()).aggregatePublicKeys(resolvedKeys),
+                  )
+                : (await getChainsafeBls()).verifyAggregate(
+                      resolvedKeys,
+                      Buffer.from(payload, 'utf-8'),
+                      (await getChainsafeBls()).Signature.fromHex(strip0x(signatureHex)),
+                  )
 
 
         return verified
@@ -530,4 +629,3 @@ export async function verifyCredentialMultiSignatureBls(
         }
     }
 }
-

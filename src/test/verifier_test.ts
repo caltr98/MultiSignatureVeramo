@@ -34,6 +34,26 @@ export async function verifyMultiSignatureVC(vc: VerifiableCredential): Promise<
     }
 }
 
+/** Verify a multi-issuer VC with aggregated BLS signature (NO Proofs-of-Ownership). */
+export async function verifyMultiSignatureVCNoPoO(vc: VerifiableCredential): Promise<any> {
+    try {
+        const result = await agent.verifyMultisignatureCredential({
+            credential: {
+                '@context': ['https://www.w3.org/2018/credentials/v1'],
+                type: ['VerifiableCredential', 'aggregated-bls-multi-signature'],
+                multi_issuers: (vc as any).multi_issuers,
+                credentialSubject: vc.credentialSubject,
+                proof: vc.proof,
+            },
+        } as any)
+        console.log('Multi-Issuer (no PoO) BLS VC Verification Result:', result)
+        return result
+    } catch (error) {
+        console.error('Error verifying multi-signature VC (no PoO):', error)
+        throw error
+    }
+}
+
 /** Narrow types matching your custom plugin’s VP shape */
 export interface MultiHolderVP extends VerifiablePresentation {
     multi_holders: string[]

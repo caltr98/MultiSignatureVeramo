@@ -1,4 +1,4 @@
-//NEW ALL: LOGIC FOR BLS SIGNATURE ISSUING AND VERIFICATION
+// NEW ALL: LOGIC FOR BLS SIGNATURE ISSUING AND VERIFICATION
 import canonicalize from 'canonicalize';
 import { bytesToHex, hexToBytes } from '@veramo/utils';
 import { ethers } from 'ethers';
@@ -31,9 +31,17 @@ async function getNobleBls() {
     }
     return nobleBlsPromise;
 }
-export async function verifyCredentialProofOfOwnershipMultiSignatureBls(credential, context, resolutionOptions, blsBackend) {
+/* ------------------- ADDED: optional attributes helper ------------------- */
+function withOptionalAttributes(base, presentation) {
+    if (presentation && presentation.attributes !== undefined) {
+        base.attributes = presentation.attributes;
+    }
+    return base;
+}
+/* ------------------------------------------------------------------------ */
+export async function verifyPresentationProofOfOwnershipMultiSignatureBls(presentation, context, resolutionOptions, blsBackend) {
     const timings = {};
-    const proof = credential.proof;
+    const proof = presentation.proof;
     if (!proof || !proof.type || !proof.signatureValue || !proof.ProofsOfOwnership) {
         return {
             verified: false,
@@ -50,13 +58,15 @@ export async function verifyCredentialProofOfOwnershipMultiSignatureBls(credenti
     try {
         const t0 = performance.now();
         const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'));
-        const payloadToVerify = {
-            '@context': credential['@context'],
-            multi_issuers: credential.multi_issuers,
-            credentialSubject: credential.credentialSubject,
-            type: credential.type,
-            aggregated_bls_public_key: credential.aggregated_bls_public_key,
-        };
+        /* ------------ CHANGED: include attributes if present ------------ */
+        const payloadToVerify = withOptionalAttributes({
+            '@context': presentation['@context'],
+            type: presentation['type'],
+            multi_holders: presentation['multi_holders'],
+            verifiableCredential: presentation.verifiableCredential,
+            aggregated_bls_public_key: presentation['aggregated_bls_public_key'],
+        }, presentation);
+        /* ---------------------------------------------------------------- */
         const payload = canonicalize(payloadToVerify);
         if (!payload)
             throw new Error('Failed to canonicalize VC');
@@ -75,8 +85,9 @@ export async function verifyCredentialProofOfOwnershipMultiSignatureBls(credenti
         }
         const signatureBytes = hexToBytes(strip0x(proof.signatureValue));
         const firstVerify = backend === 'noble'
-            ? await (await getNobleBls()).verify(signatureBytes, message, hexToBytes(strip0x(credential.aggregated_bls_public_key)))
-            : await (await getChainsafeBls()).verify((await getChainsafeBls()).PublicKey.fromHex(strip0x(credential.aggregated_bls_public_key)), message, signatureBytes);
+            ? await (await getNobleBls()).verify(signatureBytes, message, hexToBytes(strip0x(presentation.aggregated_bls_public_key)))
+            : await (await getChainsafeBls()).verify((await getChainsafeBls()).PublicKey.fromHex(strip0x(presentation.aggregated_bls_public_key)), message, signatureBytes);
+        console.log("first verify is" + firstVerify);
         const t2 = performance.now();
         timings["BLS Signature Verification"] = t2 - t1;
         if (!firstVerify) {
@@ -110,20 +121,22 @@ export async function verifyCredentialProofOfOwnershipMultiSignatureBls(credenti
         // --- Proof of Ownership Verification ---
         const t5 = performance.now();
         const signatures = proof.ProofsOfOwnership;
-        if (signatures.length !== credential.multi_issuers.length) {
-            throw new Error('Signatures and multi_issuers arrays length mismatch');
+        if (signatures.length !== presentation.multi_holders.length) {
+            throw new Error('Signatures and multi_holders arrays length mismatch');
         }
-        for (let i = 0; i < credential.multi_issuers.length; i++) {
-            const issuerDid = credential.multi_issuers[i];
-            const expectedAddress = issuerDid.split(':').pop()?.toLowerCase();
+        for (let i = 0; i < presentation.multi_holders.length; i++) {
+            const holderDID = presentation.multi_holders[i];
+            const expectedAddress = holderDID.split(':').pop()?.toLowerCase();
             const signature = signatures[i];
-            const recoveredAddress = ethers.verifyMessage(JSON.stringify(payload), signature).toLowerCase();
+            /* ------------ KEEP: no double stringify ------------ */
+            const recoveredAddress = ethers.verifyMessage(payload, signature).toLowerCase();
+            /* --------------------------------------------------- */
             if (recoveredAddress !== expectedAddress) {
-                console.log("error is here: " + issuerDid + " recovered: " + recoveredAddress + " - expected: " + expectedAddress);
+                console.log("error is here: " + holderDID + " recovered: " + recoveredAddress + " - expected: " + expectedAddress);
                 return {
                     verified: false,
                     error: {
-                        message: `Address mismatch for issuer ${issuerDid}`,
+                        message: `Address mismatch for issuer ${holderDID}`,
                         errorCode: 'invalid_signature',
                     },
                     timings,
@@ -149,15 +162,17 @@ export async function verifyCredentialProofOfOwnershipMultiSignatureBls(credenti
     }
 }
 // NEW: aggregate OF MULTI-SIGNATURE to make Multi Signature Verifiable Credential
-export async function aggregateMultiSignatureVerifiableCredentialBls(credential, options, list_of_signatures, settings) {
-    const payloadToSign = canonicalize({
-        '@context': credential['@context'],
-        type: credential['type'],
-        multi_issuers: credential['multi_issuers'],
-        credentialSubject: credential['credentialSubject'],
-    });
+export async function aggregateMultiSignatureVerifiablePresentationBls(presentation, options, list_of_signatures, settings) {
+    /* ------------ CHANGED: include attributes if present ------------ */
+    const payloadToSign = canonicalize(withOptionalAttributes({
+        '@context': presentation['@context'],
+        type: presentation['type'],
+        multi_holders: presentation['multi_holders'],
+        verifiableCredential: presentation['verifiableCredential'],
+    }, presentation));
+    /* ---------------------------------------------------------------- */
     if (!payloadToSign) {
-        throw new Error('Failed to canonicalize credential payload');
+        throw new Error('Failed to canonicalize presentation payload');
     }
     if (!Array.isArray(list_of_signatures)) {
         throw new Error('Missing list_of_signatures for BLS aggregation');
@@ -169,22 +184,21 @@ export async function aggregateMultiSignatureVerifiableCredentialBls(credential,
         type: 'BlsMultiSignaturePisa',
         created: new Date().toISOString(),
         proofPurpose: 'assertionMethod',
-        verificationMethod: credential['multi_issuers'],
+        verificationMethod: presentation['multi_holders'],
         signatureValue: signaturesAggregatedHex,
     };
     return {
-        ...credential,
+        ...presentation,
         proof
     };
 }
 // NEW: aggregate OF MULTI-SIGNATURE to make Multi Signature Verifiable Credential
-export async function generateProofOfOwnershipMultiIssuerVerifiableCredentialBls(credential, proofs_of_ownership, list_of_signatures, settings, blsBackend) {
-    //console.log("before canocalize"+JSON.stringify(credential,null,2))
-    const payLoad = canonicalize(credential);
+export async function generateProofOfOwnershipMultiIssuerVerifiablePresentationBls(presentation, proofs_of_ownership, list_of_signatures, settings, blsBackend) {
+    // presentation is canonicalized as a whole, so attributes on presentation are already included
+    const payLoad = canonicalize(presentation);
     if (!payLoad) {
-        throw new Error('Failed to canonicalize credential payload');
+        throw new Error('Failed to canonicalize presentation payload');
     }
-    //console.log("after canocalize"+payLoad)
     if (!Array.isArray(list_of_signatures)) {
         throw new Error('Missing list_of_signatures for BLS aggregation');
     }
@@ -201,63 +215,55 @@ export async function generateProofOfOwnershipMultiIssuerVerifiableCredentialBls
     const proof = {
         type: 'ProofOfOwnershipBlsMultiSignaturePisa',
         proofPurpose: 'assertionMethod',
-        verificationMethod: credential['multi_issuers'],
+        verificationMethod: presentation['multi_holders'],
         ProofsOfOwnership: proofs_of_ownership,
         signatureValue: aggregatedSignature,
     };
     let issuanceDate = new Date().toISOString();
     return {
-        ...credential, issuanceDate,
+        ...presentation, issuanceDate,
         proof
     };
 }
 // NEW: SIGNING OF MULTI-SIGNATURE CREDENTIALS
-export async function signMultiSignatureVerifiableCredentialBls(credential, options, settings) {
-    let payloadToSign;
-    if (!credential.aggregated_bls_public_key) {
-        payloadToSign = canonicalize({
-            '@context': credential['@context'],
-            type: credential['type'],
-            multi_issuers: credential['multi_issuers'],
-            credentialSubject: credential['credentialSubject'],
-        });
-    }
-    else {
-        payloadToSign = canonicalize({
-            '@context': credential['@context'],
-            type: credential['type'],
-            multi_issuers: credential['multi_issuers'],
-            credentialSubject: credential['credentialSubject'],
-            aggregated_bls_public_key: credential['aggregated_bls_public_key'],
-        });
-    }
+export async function signMultiSignatureVerifiablePresentationBls(presentation, options, settings) {
+    /* ------------ CHANGED: include attributes if present ------------ */
+    const payloadToSign = canonicalize(withOptionalAttributes({
+        '@context': presentation['@context'],
+        type: presentation['type'],
+        multi_holders: presentation['multi_holders'],
+        verifiableCredential: presentation['verifiableCredential'],
+        aggregated_bls_public_key: presentation['aggregated_bls_public_key'],
+    }, presentation));
+    /* ---------------------------------------------------------------- */
     if (!payloadToSign) {
-        throw new Error('Failed to canonicalize credential payload');
+        throw new Error('Failed to canonicalize presentation payload');
     }
-    const signatureHex = await options.signer(Uint8Array.from(Buffer.from(payloadToSign, 'utf-8')));
+    const message = Uint8Array.from(Buffer.from(payloadToSign, 'utf-8'));
+    const signatureHex = await options.signer(message);
     const signatureData = {
         payloadToSign,
         signatureHex,
     };
-    //fundemental to understand what has been signed
-    //console.log("payload that has been signed",payloadToSign)
     return {
         signatureData
     };
 }
 /**
-* Create a BLS-signed Verifiable Credential
-*/
-export async function createVerifiableCredentialBls(credential, options, settings) {
-    const payloadToSign = canonicalize({
-        '@context': credential['@context'],
-        type: credential['type'],
-        issuer: credential['issuer'],
-        issuanceDate: credential['issuanceDate'],
-        credentialSubject: credential['credentialSubject'],
-    });
+ * Create a BLS-signed Verifiable Credential
+ */
+export async function createVerifiablePresentationBls(presentation, options, settings) {
+    /* ------------ CHANGED: include attributes if present ------------ */
+    const payloadToSign = canonicalize(withOptionalAttributes({
+        '@context': presentation['@context'],
+        type: presentation['type'],
+        multi_holders: presentation['multi_holders'],
+        issuanceDate: presentation['issuanceDate'],
+        verifiableCredential: presentation['verifiableCredential'],
+    }, presentation));
+    /* ---------------------------------------------------------------- */
     if (!payloadToSign) {
-        throw new Error('Failed to canonicalize credential payload');
+        throw new Error('Failed to canonicalize presentation payload');
     }
     const signatureHex = await options.signer(Uint8Array.from(Buffer.from(payloadToSign, 'utf-8')));
     const proof = {
@@ -268,19 +274,20 @@ export async function createVerifiableCredentialBls(credential, options, setting
         signatureValue: signatureHex,
     };
     return {
-        '@context': credential['@context'],
-        type: credential['type'],
-        issuer: credential['issuer'],
-        issuanceDate: credential['issuanceDate'],
-        credentialSubject: credential['credentialSubject'],
+        '@context': presentation['@context'],
+        type: presentation['type'],
+        multi_holders: presentation['multi_holders'],
+        issuanceDate: presentation['issuanceDate'],
+        verifiableCredential: presentation['verifiableCredential'],
+        /* NOTE: attributes is part of the signed payload; it can be present at top-level presentation */
         proof: proof, // explicitly last
     };
 }
 /**
  * Verify a BLS-signed Verifiable Credential
  */
-export async function verifyCredentialBls(credential, context, resolutionOptions, blsBackend) {
-    const proof = credential.proof;
+export async function verifyPresentationBls(presentation, context, resolutionOptions, blsBackend) {
+    const proof = presentation.proof;
     if (!proof || !proof.type || !proof.signatureValue) {
         return {
             verified: false,
@@ -295,13 +302,14 @@ export async function verifyCredentialBls(credential, context, resolutionOptions
     const signatureHex = proof.signatureValue;
     const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'));
     try {
-        // Canonicalize VC payload without proof
-        const payload = canonicalize({
-            '@context': credential['@context'],
-            type: credential['type'],
-            issuer: credential['issuer'],
-            credentialSubject: credential['credentialSubject'],
-        });
+        /* ------------ CHANGED: include attributes if present ------------ */
+        const payload = canonicalize(withOptionalAttributes({
+            '@context': presentation['@context'],
+            type: presentation['type'],
+            multi_holders: presentation['multi_holders'],
+            verifiableCredential: presentation['verifiableCredential'],
+        }, presentation));
+        /* ---------------------------------------------------------------- */
         if (!payload)
             throw new Error('Failed to canonicalize VC');
         const message = Uint8Array.from(Buffer.from(payload, 'utf-8'));
@@ -354,8 +362,8 @@ export async function verifyCredentialBls(credential, context, resolutionOptions
 /**
  * Verify a BLS-signed Verifiable Credential
  */
-export async function verifyCredentialMultiSignatureBls(credential, context, resolutionOptions, blsBackend) {
-    const proof = credential.proof;
+export async function verifyPresentationMultiSignatureBls(presentation, context, resolutionOptions, blsBackend) {
+    const proof = presentation.proof;
     if (!proof || !proof.type || !proof.signatureValue) {
         return {
             verified: false,
@@ -382,15 +390,17 @@ export async function verifyCredentialMultiSignatureBls(credential, context, res
                 },
             };
         }
-        // Canonicalize VC payload without proof
-        const payload = canonicalize({
-            '@context': credential['@context'],
-            type: credential['type'],
-            multi_issuers: credential['multi_issuers'],
-            credentialSubject: credential['credentialSubject'],
-        });
+        /* ------------ CHANGED: include attributes if present ------------ */
+        const payload = canonicalize(withOptionalAttributes({
+            '@context': presentation['@context'],
+            type: presentation['type'],
+            multi_holders: presentation['multi_holders'],
+            verifiableCredential: presentation['verifiableCredential'],
+            aggregated_bls_public_key: presentation.aggregated_bls_public_key,
+        }, presentation));
+        /* ---------------------------------------------------------------- */
         if (!payload)
-            throw new Error('Failed to canonicalize VC');
+            throw new Error('Failed to canonicalize VP');
         const message = Uint8Array.from(Buffer.from(payload, 'utf-8'));
         const signatureBytes = hexToBytes(strip0x(signatureHex));
         // Resolve all verification methods

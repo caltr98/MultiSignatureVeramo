@@ -43,9 +43,24 @@ import {
     convertEd25519PublicKeyToX25519,
     hexToBytes,
 } from '@veramo/utils'
-import bls from "@chainsafe/bls";
 
 //const debug = debug('veramo:kms:local')
+
+type BlsBackend = 'chainsafe' | 'noble'
+
+function resolveBlsBackend(value: unknown): BlsBackend {
+    return value === 'noble' ? 'noble' : 'chainsafe'
+}
+
+function readEnv(name: string): string | undefined {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p: any = typeof process !== 'undefined' ? process : undefined
+    return p?.env?.[name]
+}
+
+function strip0x(hex: string): string {
+    return hex.startsWith('0x') ? hex.slice(2) : hex
+}
 
 /**
  * This is an implementation of {@link @veramo/key-manager#AbstractKeyManagementSystem | AbstractKeyManagementSystem}
@@ -58,17 +73,21 @@ import bls from "@chainsafe/bls";
  */
 export class BlsKeyManagementSystem extends AbstractKeyManagementSystem {
     private readonly keyStore: AbstractPrivateKeyStore
+    private readonly blsBackend: BlsBackend
+    private chainsafeBlsPromise?: Promise<any>
+    private nobleBlsPromise?: Promise<any>
 
-    constructor(keyStore: AbstractPrivateKeyStore) {
+    constructor(keyStore: AbstractPrivateKeyStore, options?: { blsBackend?: BlsBackend }) {
         super()
         this.keyStore = keyStore
+        this.blsBackend = options?.blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
     }
 
     async importKey(args: Omit<MinimalImportableKey, 'kms'>): Promise<ManagedKeyInfo> {
         if (!args.type || !args.privateKeyHex) {
             throw new Error('invalid_argument: type and privateKeyHex are required to import a key')
         }
-        const managedKey = this.asManagedKeyInfo({ alias: args.kid, ...args })
+        const managedKey = await this.asManagedKeyInfo({ alias: args.kid, ...args })
 
         await this.keyStore.importKey({ alias: managedKey.kid, ...args })
         //debug('imported key', managedKey.type, managedKey.publicKeyHex)
@@ -78,7 +97,7 @@ export class BlsKeyManagementSystem extends AbstractKeyManagementSystem {
 
     async listKeys(): Promise<ManagedKeyInfo[]> {
         const privateKeys = await this.keyStore.listKeys({})
-        const managedKeys = privateKeys.map((key) => this.asManagedKeyInfo(key))
+        const managedKeys = await Promise.all(privateKeys.map((key) => this.asManagedKeyInfo(key)))
         return managedKeys
     }
 
@@ -112,11 +131,21 @@ export class BlsKeyManagementSystem extends AbstractKeyManagementSystem {
                 break
             }
             case "Bls12381G1": {
-                const secretKey = bls.SecretKey.fromKeygen();
-                key = await this.importKey({
+                if (this.blsBackend === 'noble') {
+                    const bls = await this.getNobleBls()
+                    const secretKeyBytes: Uint8Array = bls.utils.randomPrivateKey()
+                    key = await this.importKey({
                         type,
-                        privateKeyHex: bytesToHex(secretKey.toBytes())
-                    });
+                        privateKeyHex: bytesToHex(secretKeyBytes),
+                    })
+                } else {
+                    const bls = await this.getChainsafeBls()
+                    const secretKey = bls.SecretKey.fromKeygen()
+                    key = await this.importKey({
+                        type,
+                        privateKeyHex: bytesToHex(secretKey.toBytes()),
+                    })
+                }
                 break
 
             }
@@ -333,7 +362,9 @@ export class BlsKeyManagementSystem extends AbstractKeyManagementSystem {
      * Converts a {@link @veramo/key-manager#ManagedPrivateKey | ManagedPrivateKey} to
      * {@link @veramo/core-types#ManagedKeyInfo}
      */
-    private asManagedKeyInfo(args: RequireOnly<ManagedPrivateKey, 'privateKeyHex' | 'type'>): ManagedKeyInfo {
+    private async asManagedKeyInfo(
+        args: RequireOnly<ManagedPrivateKey, 'privateKeyHex' | 'type'>,
+    ): Promise<ManagedKeyInfo> {
         let key: Partial<ManagedKeyInfo>
         switch (args.type) {
             case 'Ed25519': {
@@ -396,23 +427,13 @@ export class BlsKeyManagementSystem extends AbstractKeyManagementSystem {
                 break
             }
             case 'Bls12381G1': {
-                //necessary to reconstruct secret key to get public key
-                const secretKeyBytes = hexToBytes(args.privateKeyHex.toLowerCase())
-
-                // Reconstruct the secret key object from bytes
-                const secretKey = bls.SecretKey.fromBytes(secretKeyBytes)
-
-                // Derive the public key from the secret key
-                const publicKey = secretKey.toPublicKey()
-
-                // Convert public key to hex string
-                const publicKeyHex = bytesToHex(publicKey.toBytes())
+                const publicKeyHex = await this.deriveBlsPublicKeyHex(args.privateKeyHex.toLowerCase())
                 key = {
                     type: args.type,
                     kid: args.alias || publicKeyHex,
                     publicKeyHex: publicKeyHex,
                     meta: {
-                        algorithms: ["BLS_SIGNATURE,BLS_MULTISIG, BLS_AGGREGATE_SIG"],
+                        algorithms: ['BLS_SIGNATURE', 'BLS_AGGREGATE_MULTI_SIGNATURE'],
                     },
                 }
                 break
@@ -426,17 +447,20 @@ export class BlsKeyManagementSystem extends AbstractKeyManagementSystem {
     //NEW: BLS SIGNATURE function
     private async signBls(privateKeyHex: string, data: Uint8Array) {
 
-        //necessary to reconstruct secret key to get public key
-        const secretKeyBytes = hexToBytes(privateKeyHex)
+        const secretKeyBytes = hexToBytes(strip0x(privateKeyHex))
 
-        // Reconstruct the secret key object from bytes
-        const secretKey = bls.SecretKey.fromBytes(secretKeyBytes)
-
-        const signedData =secretKey.sign(data)
-
-        const signatureToHex = Buffer.from(signedData.toBytes()).toString('hex');
-
-        return signatureToHex as string;
+        if (this.blsBackend === 'noble') {
+            const bls = await this.getNobleBls()
+            const signatureBytes: Uint8Array = bls.sign(data, secretKeyBytes)
+            return bytesToHex(signatureBytes)
+        } else {
+            const bls = await this.getChainsafeBls()
+            const secretKey = bls.SecretKey.fromBytes(secretKeyBytes)
+            const signature = secretKey.sign(data)
+            const signatureBytes: Uint8Array =
+                typeof signature?.toBytes === 'function' ? signature.toBytes() : (signature as Uint8Array)
+            return bytesToHex(signatureBytes)
+        }
     }
 
     //new: BLS AGGREGATE MULTI-SIGNATURE function
@@ -455,9 +479,49 @@ export class BlsKeyManagementSystem extends AbstractKeyManagementSystem {
             throw new Error('invalid_argument: "signatures" field must be a non-empty array')
         }
 
-        const signatures = parsed.signatures.map((hex: string) => bls.Signature.fromHex(hex))
-        const aggregated = bls.aggregateSignatures(signatures)
-        return Buffer.from(aggregated).toString('hex')
+        if (this.blsBackend === 'noble') {
+            const bls = await this.getNobleBls()
+            const signatures = parsed.signatures.map((hex: string) => hexToBytes(strip0x(hex)))
+            const aggregated = bls.aggregateSignatures(signatures)
+            return bytesToHex(aggregated)
+        } else {
+            const bls = await this.getChainsafeBls()
+            const signatures = parsed.signatures.map((hex: string) => bls.Signature.fromHex(strip0x(hex)))
+            const aggregated = bls.aggregateSignatures(signatures)
+            const aggregatedBytes: Uint8Array =
+                typeof aggregated?.toBytes === 'function' ? aggregated.toBytes() : (aggregated as Uint8Array)
+            return bytesToHex(aggregatedBytes)
+        }
+    }
+
+    private async deriveBlsPublicKeyHex(privateKeyHex: string): Promise<string> {
+        const secretKeyBytes = hexToBytes(strip0x(privateKeyHex))
+        if (this.blsBackend === 'noble') {
+            const bls = await this.getNobleBls()
+            const publicKeyBytes: Uint8Array = bls.getPublicKey(secretKeyBytes)
+            return bytesToHex(publicKeyBytes)
+        } else {
+            const bls = await this.getChainsafeBls()
+            const secretKey = bls.SecretKey.fromBytes(secretKeyBytes)
+            const publicKey = secretKey.toPublicKey()
+            const publicKeyBytes: Uint8Array =
+                typeof publicKey?.toBytes === 'function' ? publicKey.toBytes() : (publicKey as Uint8Array)
+            return bytesToHex(publicKeyBytes)
+        }
+    }
+
+    private async getChainsafeBls(): Promise<any> {
+        if (!this.chainsafeBlsPromise) {
+            this.chainsafeBlsPromise = import('@chainsafe/bls').then((m: any) => m?.default ?? m)
+        }
+        return this.chainsafeBlsPromise
+    }
+
+    private async getNobleBls(): Promise<any> {
+        if (!this.nobleBlsPromise) {
+            this.nobleBlsPromise = import('@noble/curves/bls12-381').then((m: any) => m.bls12_381)
+        }
+        return this.nobleBlsPromise
     }
 
 }

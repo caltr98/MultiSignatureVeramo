@@ -50,7 +50,9 @@ import { decodeJWT } from 'did-jwt'
 
 import {
     asArray,
+    bytesToHex,
     extractIssuer,
+    hexToBytes,
     removeDIDParameters,
     isDefined,
     MANDATORY_CREDENTIAL_CONTEXT,
@@ -87,10 +89,39 @@ import {
     verifyPresentationProofOfOwnershipMultiSignatureBls,
 } from './bls-presentations.js'
 
-
-import bls from "@chainsafe/bls";
-
 //const //debug = //debug('veramo:w3c:action-handler')
+
+type BlsBackend = 'chainsafe' | 'noble'
+
+function resolveBlsBackend(value: unknown): BlsBackend {
+    return value === 'noble' ? 'noble' : 'chainsafe'
+}
+
+function readEnv(name: string): string | undefined {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p: any = typeof process !== 'undefined' ? process : undefined
+    return p?.env?.[name]
+}
+
+function strip0x(hex: string): string {
+    return hex.startsWith('0x') ? hex.slice(2) : hex
+}
+
+let chainsafeBlsPromise: Promise<any> | undefined
+async function getChainsafeBls(): Promise<any> {
+    if (!chainsafeBlsPromise) {
+        chainsafeBlsPromise = import('@chainsafe/bls').then((m: any) => m?.default ?? m)
+    }
+    return chainsafeBlsPromise
+}
+
+let nobleBlsPromise: Promise<any> | undefined
+async function getNobleBls(): Promise<any> {
+    if (!nobleBlsPromise) {
+        nobleBlsPromise = import('@noble/curves/bls12-381').then((m: any) => m.bls12_381)
+    }
+    return nobleBlsPromise
+}
 
 export type MultiIssuerVerifiableCredential = Omit<VerifiableCredential, 'issuer' | 'issuanceDate'> & {
     multi_issuers: string[];
@@ -193,6 +224,7 @@ export interface ICustomCredentialPlugin extends IPluginMethodMap {
  */
 export class CredentialPlugin implements IAgentPlugin {
     readonly methods: ICredentialPlugin
+    private readonly blsBackend: BlsBackend
     readonly schema = {
         components: {
             schemas: {
@@ -281,7 +313,8 @@ export class CredentialPlugin implements IAgentPlugin {
         },
     }
 
-    constructor() {
+    constructor(options?: { blsBackend?: BlsBackend } & Record<string, any>) {
+        this.blsBackend = options?.blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
         this.methods = {
             createVerifiablePresentation: this.createVerifiablePresentation.bind(this),
             createVerifiableCredential: this.createVerifiableCredential.bind(this),
@@ -324,7 +357,8 @@ export class CredentialPlugin implements IAgentPlugin {
                 verificationResult = await verifyCredentialMultiSignatureBls(
                     credential ,
                     context,
-                    otherOptions?.resolutionOptions
+                    otherOptions?.resolutionOptions,
+                    this.blsBackend,
                 )
                 return verificationResult;
             } catch (e: any) {
@@ -354,7 +388,8 @@ export class CredentialPlugin implements IAgentPlugin {
                 verificationResult = await verifyCredentialProofOfOwnershipMultiSignatureBls(
                     credential as ProofOfOwnershipMultiIssuerVerifiableCredential ,
                     context,
-                    otherOptions?.resolutionOptions
+                    otherOptions?.resolutionOptions,
+                    this.blsBackend,
                 )
                 return verificationResult;
             } catch (e: any) {
@@ -481,17 +516,19 @@ export class CredentialPlugin implements IAgentPlugin {
         args: { list_of_publicKeyHex: string[] },
         context: IssuerAgentContext
     ): Promise<{ bls_aggregated_pubkey: string }> {
-        // Convert each hex string to a bls.PublicKey instance
-        const publicKeys = args.list_of_publicKeyHex.map(hex =>
-            bls.PublicKey.fromBytes(Buffer.from(hex.trim(), 'hex'))
-        );
-
-        // Aggregate all public keys
-        const aggregatedKey = Buffer.from(bls.aggregatePublicKeys(publicKeys)).toString("hex");
-
-        return {
-            bls_aggregated_pubkey: aggregatedKey
-        };
+        if (this.blsBackend === 'noble') {
+            const bls = await getNobleBls()
+            const publicKeys = args.list_of_publicKeyHex.map((hex) => hexToBytes(strip0x(hex.trim())))
+            const aggregatedKey: Uint8Array = bls.aggregatePublicKeys(publicKeys)
+            return { bls_aggregated_pubkey: bytesToHex(aggregatedKey) }
+        } else {
+            const bls = await getChainsafeBls()
+            const publicKeys = args.list_of_publicKeyHex.map((hex) =>
+                bls.PublicKey.fromBytes(Buffer.from(hex.trim(), 'hex')),
+            )
+            const aggregatedKey: Uint8Array = bls.aggregatePublicKeys(publicKeys)
+            return { bls_aggregated_pubkey: bytesToHex(aggregatedKey) }
+        }
     }
 
 
@@ -642,7 +679,13 @@ export class CredentialPlugin implements IAgentPlugin {
         try {
             let signedVerifiableCredential: VerifiableCredential
             if (proofFormat as ExtendedProofFormat === 'ProofOfOwnership-aggregate-bls-multi-signature'){
-                signedVerifiableCredential = await generateProofOfOwnershipMultiIssuerVerifiableCredentialBls(credential, proofsOfOwnership,signatures)
+                signedVerifiableCredential = await generateProofOfOwnershipMultiIssuerVerifiableCredentialBls(
+                    credential,
+                    proofsOfOwnership,
+                    signatures,
+                    undefined,
+                    this.blsBackend,
+                )
 
 
                 return signedVerifiableCredential;
@@ -775,7 +818,8 @@ export class CredentialPlugin implements IAgentPlugin {
                 verificationResult = await verifyCredentialBls(
                     credential as VerifiableCredential,
                     context,
-                    otherOptions?.resolutionOptions
+                    otherOptions?.resolutionOptions,
+                    this.blsBackend,
                 )
                 return verificationResult;
             } catch (e: any) {
@@ -1082,7 +1126,16 @@ export class CredentialPlugin implements IAgentPlugin {
         // coordinator DID/key to perform aggregation signing
         const managed = (await context.agent.didManagerFind())[0]
         if (!managed) throw new Error('no_managed_did: required for aggregation')
-        const key = pickSigningKey(managed, keyRef)
+        const key =
+            keyRef
+                ? pickSigningKey(managed, keyRef)
+                : (() => {
+                      const blsKey = managed.keys.find((k) => k.type === 'Bls12381G1')
+                      if (!blsKey) {
+                          throw new Error(`key_not_found: No Bls12381G1 key for aggregation on ${managed.did}`)
+                      }
+                      return blsKey as IKey
+                  })()
         const alg = 'BLS_AGGREGATE_MULTI_SIGNATURE'
         const signer = wrapSigner(context, key, alg)
 
@@ -1109,6 +1162,8 @@ export class CredentialPlugin implements IAgentPlugin {
             normalized as any,
             proofsOfOwnership,
             signatures,
+            undefined,
+            this.blsBackend,
         )
         return vp;
     }
@@ -1119,7 +1174,12 @@ export class CredentialPlugin implements IAgentPlugin {
         context: VerifierAgentContext,
     ): Promise<IVerifyResult> {
         const { presentation, ...otherOptions } = args
-        return await verifyPresentationMultiSignatureBls(presentation, context, otherOptions?.resolutionOptions)
+        return await verifyPresentationMultiSignatureBls(
+            presentation,
+            context,
+            otherOptions?.resolutionOptions,
+            this.blsBackend,
+        )
     }
 
 // 4.5 Verify PoO + aggregated BLS on multi-holder VP
@@ -1132,6 +1192,7 @@ export class CredentialPlugin implements IAgentPlugin {
             presentation,
             context,
             otherOptions?.resolutionOptions,
+            this.blsBackend,
         )
     }
 

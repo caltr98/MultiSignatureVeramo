@@ -1,0 +1,112 @@
+import { cleanup, setup_bls_agents } from "./enviroment_setup.js";
+import { getBlsKeyHex, VCAggregateKeysToSignaturesWithBenchmark } from "./issuers_test.js";
+import fs from 'fs';
+import path from 'path';
+// Path of the CSV file where results will be appended
+const RESULTS_CSV = path.resolve('./benchmark_results.csv');
+// Write CSV header if file does not exist yet
+if (!fs.existsSync(RESULTS_CSV)) {
+    const header = 'Issuers,StepName,avg_ms,std_ms\n';
+    fs.writeFileSync(RESULTS_CSV, header);
+}
+//run with yarn ts-node --esm ./src/test/full_test_main.js --claims 40 --size 2048 --issuers 8 --runs 5
+function parseArg(name, defaultValue) {
+    const index = process.argv.indexOf(`--${name}`);
+    if (index !== -1 && process.argv[index + 1]) {
+        const val = parseInt(process.argv[index + 1]);
+        if (!isNaN(val))
+            return val;
+    }
+    return defaultValue;
+}
+// Parse command-line inputs with defaults
+const claims_n = parseArg('claims', 2);
+const claims_size = parseArg('size', 12);
+const n_issuers = parseArg('issuers', 2);
+const RUNS = parseArg('runs', 2);
+import { createSingleHolderPresentation, storeCredential } from "./holder_test.js";
+import { verifyMultiSignatureVC, verifyVP } from "./verifier_test.js";
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+export async function benchmarkStep(label, results, fn) {
+    const start = performance.now();
+    const result = await fn();
+    const end = performance.now();
+    results[label] = end - start;
+    return result;
+}
+import { performance } from "node:perf_hooks";
+//create all agents for issuer, holder, and verifier
+//50 issuer is a NO-GO when using INFURA!
+const issuers = await setup_bls_agents(n_issuers);
+const holder = (await setup_bls_agents(1))[0];
+//
+//-----
+await getBlsKeyHex(issuers[0].kid_bls);
+const allTimings = {};
+for (let i = 0; i < RUNS; i++) {
+    console.log(`\n Run ${i + 1} of ${RUNS}`);
+    const timings = {};
+    const res = await VCAggregateKeysToSignaturesWithBenchmark(issuers, holder.did, claims_n, claims_size);
+    const VC = res.vc;
+    Object.assign(timings, res.timings);
+    await benchmarkStep('Store VC', timings, () => storeCredential(VC));
+    let vp;
+    await benchmarkStep('Create VP', timings, async () => {
+        vp = await createSingleHolderPresentation(VC, holder.did);
+        return vp;
+    });
+    // --- Verify VP (Verifier) ---
+    await benchmarkStep('Verify VP', timings, async () => {
+        return verifyVP(vp);
+    });
+    let verified = false;
+    let lastResult;
+    while (!verified) {
+        const res = await verifyMultiSignatureVC(VC);
+        // Include internal substep timings (e.g., BLS, DID resolution, PoO)
+        if (res.timings) {
+            for (const [label, time] of Object.entries(res.timings)) {
+                timings[label] = time;
+            }
+        }
+        if (res?.verified) {
+            verified = true;
+        }
+        else {
+            console.log('Verification failed, repeating benchmark...');
+            await sleep(3000);
+        }
+    }
+    // Accumulate
+    for (const [label, value] of Object.entries(timings)) {
+        if (!allTimings[label]) {
+            allTimings[label] = [];
+        }
+        allTimings[label].push(value);
+    }
+    await sleep(100); // cooldown for alchemy!
+}
+// Compute averages
+const summary = {};
+for (const [label, values] of Object.entries(allTimings)) {
+    const avg_in_ms = values.reduce((a, b) => a + b, 0) / values.length;
+    const std_dev = Math.sqrt(values.reduce((sum, x) => sum + Math.pow(x - avg_in_ms, 2), 0) / values.length);
+    summary[label] = { avg_in_ms, std_dev };
+}
+// Prepare CSV lines for this run
+const csvLines = [];
+for (const [step, stats] of Object.entries(summary)) {
+    const avg = stats.avg_in_ms.toFixed(6); // adjust decimals as needed
+    const std = stats.std_dev.toFixed(6);
+    csvLines.push(`${n_issuers},${step},${avg},${std}`);
+}
+// Append all lines to CSV file
+fs.appendFileSync(RESULTS_CSV, csvLines.join('\n') + '\n');
+console.log(`Appended results for ${n_issuers} issuers to ${RESULTS_CSV}`);
+// Print result
+console.log(`\nAverage timings and standard deviation with ${claims_n} claims of ${claims_size}, ${n_issuers} issuers, and ${RUNS} runs:`);
+console.log(`Average timings and standard deviation over ${RUNS} runs:`);
+console.table(summary);
+await cleanup();

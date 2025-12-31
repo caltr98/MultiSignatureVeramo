@@ -1,0 +1,3 @@
+Issuers,StepName,Size_bytes
+16,SingleProofOfPossession,192
+16,BLS Key Exchange + All PoP,73440
