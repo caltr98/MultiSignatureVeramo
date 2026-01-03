@@ -3,8 +3,8 @@ import { storeCredential, createPresentation } from './holder_test.js';
 import { verifyVP, verifyAllVCsInVP } from './verifier_test.js';
 import fs from 'fs';
 import path from 'path';
-import { generateVCPayload } from "./generate_VC_payload.js";
-import { agent } from "../veramo/setup.js";
+import { generateVCPayload } from './generate_VC_payload.js';
+import { agent } from '../veramo/setup_eip712.js';
 import { fileURLToPath } from 'url';
 function parseArg(name, defaultValue) {
     const index = process.argv.indexOf(`--${name}`);
@@ -15,18 +15,33 @@ function parseArg(name, defaultValue) {
     }
     return defaultValue;
 }
+function parseBoolArg(name, defaultValue) {
+    const index = process.argv.indexOf(`--${name}`);
+    if (index !== -1) {
+        const next = process.argv[index + 1];
+        if (next === undefined)
+            return true;
+        if (next === '1' || next === 'true')
+            return true;
+        if (next === '0' || next === 'false')
+            return false;
+    }
+    return defaultValue;
+}
 const claims_n = parseArg('claims', 32);
 const claims_size = parseArg('size', 1024);
 const n_issuers = parseArg('issuers', 8);
 const RUNS = parseArg('runs', 5);
+const PRINT_SAMPLE = parseBoolArg('printSample', false);
+const LOG_RUNS = parseBoolArg('logRuns', true);
 const RESULTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..', 'experimental_results');
 fs.mkdirSync(RESULTS_DIR, { recursive: true });
-const RESULTS_CSV = path.join(RESULTS_DIR, `benchmark_standard_claims${claims_n}_size${claims_size}.csv`);
+const RESULTS_CSV = path.join(RESULTS_DIR, `benchmark_standard_eip712_claims${claims_n}_size${claims_size}.csv`);
 if (!fs.existsSync(RESULTS_CSV)) {
     fs.writeFileSync(RESULTS_CSV, 'Issuers,StepName,avg_ms,std_ms\n');
 }
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 async function benchmarkStep(label, results, fn) {
     const start = performance.now();
@@ -35,52 +50,56 @@ async function benchmarkStep(label, results, fn) {
     results[label] = end - start;
     return result;
 }
-// MAIN RUN
 const allTimings = {};
-const issuers = await setup_agents(n_issuers); // one agent per VC
+const issuers = await setup_agents(n_issuers);
 const holder = (await setup_agents(1))[0];
 for (let i = 0; i < RUNS; i++) {
-    console.log(`\nRun ${i + 1} of ${RUNS}`);
+    if (LOG_RUNS) {
+        console.log(`\nRun ${i + 1} of ${RUNS}`);
+    }
     const timings = {};
     const credentials = [];
-    timings["Issue VCs"] = timings["Store VCs"] = 0;
-    let now, start;
+    // Keep the same step names as `src/test_no_multisign/full_test_standard_veramo.ts`
+    // so the CSVs are directly comparable.
+    timings['Issue VCs'] = 0;
+    timings['Store VCs'] = 0;
     for (const issuer of issuers) {
         const payload = await generateVCPayload(holder.did, claims_n, claims_size, 42);
-        start = performance.now();
-        // ---- Standard Veramo VC Creation ----
-        const vc = await agent.createVerifiableCredential({
+        let start = performance.now();
+        const vc = await agent.createVerifiableCredentialEIP712({
             credential: {
                 '@context': ['https://www.w3.org/2018/credentials/v1'],
                 type: ['VerifiableCredential'],
                 issuer: { id: issuer.did },
                 credentialSubject: payload.credentialSubject,
             },
-            proofFormat: 'jwt',
+            keyRef: issuer.keyRef,
         });
-        now = performance.now();
-        timings[`Issue VCs`] = timings[`Issue VCs`] + now - start;
+        let now = performance.now();
+        timings['Issue VCs'] += now - start;
         credentials.push(vc);
+        if (PRINT_SAMPLE && issuer === issuers[0] && i === 0) {
+            console.log('\nEIP712 VC sample:');
+            console.log(JSON.stringify(vc, null, 2));
+        }
         start = performance.now();
         await storeCredential(vc);
         now = performance.now();
-        timings[`Store VCs`] = timings[`Store VCs`] + now - start;
+        timings['Store VCs'] += now - start;
     }
-    const vp = await benchmarkStep('Create VP (N VCs)', timings, () => createPresentation(credentials, holder.did));
+    const vp = await benchmarkStep('Create VP (N VCs)', timings, () => createPresentation(credentials, holder.did, holder.keyRef));
     await benchmarkStep('Verify VP (N VCs)', timings, () => verifyVP(vp));
     const results = await verifyAllVCsInVP(vp, timings);
-    if (results.some(r => !r.verified)) {
+    if (results.some((r) => !r.verified)) {
         throw new Error('One or more embedded VCs failed verification');
     }
     for (const [label, value] of Object.entries(timings)) {
-        if (!allTimings[label]) {
+        if (!allTimings[label])
             allTimings[label] = [];
-        }
         allTimings[label].push(value);
     }
     await sleep(200);
 }
-// ---- Compute Stats ----
 const summary = {};
 for (const [label, values] of Object.entries(allTimings)) {
     const avg_in_ms = values.reduce((a, b) => a + b, 0) / values.length;
@@ -93,6 +112,6 @@ const csvLines = Object.entries(summary).map(([step, stats]) => {
     return `${n_issuers},${step},${avg},${std}`;
 });
 fs.appendFileSync(RESULTS_CSV, csvLines.join('\n') + '\n');
-console.log(`\n[Standard Veramo] Results for ${n_issuers} issuers`);
+console.log(`\n[Standard Veramo EIP712] Results for ${n_issuers} issuers`);
 console.table(summary);
 await cleanup();

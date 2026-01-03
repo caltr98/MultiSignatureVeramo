@@ -7,7 +7,10 @@
 async function postJson(baseUrl, path, body) {
     const res = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+            'content-type': 'application/json',
+            ...(process.env.API_KEY ? { 'x-api-key': process.env.API_KEY } : {}),
+        },
         body: JSON.stringify(body),
     });
     const json = await res.json();

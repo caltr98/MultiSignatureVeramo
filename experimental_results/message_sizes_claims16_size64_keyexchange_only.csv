@@ -1,0 +1,5 @@
+Issuers,StepName,Size_bytes
+2,SingleProofOfPossession,192
+2,BLS Key Exchange + All PoP,612
+2,SingleProofOfPossession,192
+2,BLS Key Exchange + All PoP,612

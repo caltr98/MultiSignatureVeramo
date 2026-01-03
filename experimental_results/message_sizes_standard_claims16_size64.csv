@@ -1,0 +1,11 @@
+Issuers,StepName,Size_bytes
+2,Total VC Payloads,7422
+2,Final VP,13888
+4,Total VC Payloads,14844
+4,Final VP,27016
+8,Total VC Payloads,29688
+8,Final VP,53272
+16,Total VC Payloads,59376
+16,Final VP,105784
+32,Total VC Payloads,118752
+32,Final VP,210808

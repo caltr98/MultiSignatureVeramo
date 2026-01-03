@@ -4,10 +4,7 @@ import { generateVCPayload } from './generate_VC_payload.js';
 import { agent } from '../veramo/setup.js';
 import fs from 'fs';
 import path from 'path';
-const SIZE_CSV = path.resolve('./message_sizes_standard.csv');
-if (!fs.existsSync(SIZE_CSV)) {
-    fs.writeFileSync(SIZE_CSV, 'Issuers,StepName,Size_bytes\n');
-}
+import { fileURLToPath } from 'url';
 function parseArg(name, defaultValue) {
     const index = process.argv.indexOf(`--${name}`);
     if (index !== -1 && process.argv[index + 1]) {
@@ -20,6 +17,12 @@ function parseArg(name, defaultValue) {
 const claims_n = parseArg('claims', 32);
 const claims_size = parseArg('size', 1024);
 const n_issuers = parseArg('issuers', 4);
+const RESULTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..', 'experimental_results');
+fs.mkdirSync(RESULTS_DIR, { recursive: true });
+const SIZE_CSV = path.join(RESULTS_DIR, `message_sizes_standard_claims${claims_n}_size${claims_size}.csv`);
+if (!fs.existsSync(SIZE_CSV)) {
+    fs.writeFileSync(SIZE_CSV, 'Issuers,StepName,Size_bytes\n');
+}
 function measureSize(label, obj, map) {
     const size = Buffer.byteLength(JSON.stringify(obj), 'utf8');
     map[label] = size;

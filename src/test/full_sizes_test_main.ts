@@ -9,11 +9,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { VerifiableCredential } from '@veramo/core-types';
-
-const SIZE_CSV = path.resolve('./message_sizes.csv');
-if (!fs.existsSync(SIZE_CSV)) {
-    fs.writeFileSync(SIZE_CSV, 'Issuers,StepName,Size_bytes\n');
-}
+import { fileURLToPath } from 'url';
 
 function parseArg(name: string, def: number): number {
     const i = process.argv.indexOf(`--${name}`);
@@ -27,6 +23,13 @@ function parseArg(name: string, def: number): number {
 const claims_n = parseArg('claims', 3);
 const claims_size = parseArg('size', 150);
 const n_issuers = parseArg('issuers', 16);
+
+const RESULTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..', 'experimental_results');
+fs.mkdirSync(RESULTS_DIR, { recursive: true });
+const SIZE_CSV = path.join(RESULTS_DIR, `message_sizes_claims${claims_n}_size${claims_size}.csv`);
+if (!fs.existsSync(SIZE_CSV)) {
+    fs.writeFileSync(SIZE_CSV, 'Issuers,StepName,Size_bytes\n');
+}
 
 console.log({ claims_n, claims_size, n_issuers });
 
@@ -71,7 +74,7 @@ const per_exchange = pk_size + pop_size + nonceBytes;
 
 //1.4 Exchanges (summed up)
 sizes["BLS Key Exchange + All PoP"] = n_issuers * (n_issuers - 1) * per_exchange;
-/*
+
 // 2. Claim Agreement = canonicalized VC payload = (N × N-1) × (claims x claim_size)
 const payload = claims_n * claims_size * (n_issuers * n_issuers-1);
 measureSize('Claim Agreement', payload, sizes); // Size for one instance
@@ -92,10 +95,6 @@ sizes['PoOs to OIss'] = n_issuers * sizes['PoO (1)'];
 // 5. Final VC sent to holder (aggregated) = payload + agg sig + PoOs
 measureSize('VC to Holder', VC, sizes);
 
-// Clean up temp labels
-delete sizes['Sig to OIss (1)'];
-delete sizes['PoO (1)'];
-*/
 console.log(`Message Size Breakdown for ${n_issuers} issuers:`);
 console.table(sizes);
 

@@ -1,0 +1,56 @@
+Issuers,StepName,avg_ms,std_ms
+2,Aggregate BLS keys,1.217904,0.285298
+2,Generate VC payload,0.088996,0.086676
+2,Sign with N issuer,12.483392,2.170508
+2,Generate N PoOs,8.321641,1.878222
+2,Create final VC,3.721323,0.645970
+2,Store VC,36.221885,34.279343
+2,Create VP,4.996022,5.532925
+2,Verify VP,186.196287,47.554202
+2,BLS Signature Verification,8.595456,0.858475
+2,DID DocumentS Resolution,180.628179,14.967380
+2,Proofs of Ownership Verification,5.366140,1.011857
+4,Aggregate BLS keys,1.941066,0.288366
+4,Generate VC payload,0.094905,0.096213
+4,Sign with N issuer,24.508349,2.973604
+4,Generate N PoOs,16.004029,3.694195
+4,Create final VC,6.536551,0.544697
+4,Store VC,31.621093,6.028189
+4,Create VP,5.010124,4.576413
+4,Verify VP,215.675333,140.160926
+4,BLS Signature Verification,8.399685,0.468197
+4,DID DocumentS Resolution,205.405984,49.163916
+4,Proofs of Ownership Verification,10.629025,2.775344
+8,Aggregate BLS keys,3.770226,0.342674
+8,Generate VC payload,0.086238,0.076185
+8,Sign with N issuer,46.013569,3.125611
+8,Generate N PoOs,27.865017,3.082384
+8,Create final VC,12.635079,0.610332
+8,Store VC,32.111248,6.062121
+8,Create VP,4.848668,5.075905
+8,Verify VP,181.865647,38.264578
+8,BLS Signature Verification,8.628880,0.395959
+8,DID DocumentS Resolution,187.859539,9.059878
+8,Proofs of Ownership Verification,19.327099,2.483077
+16,Aggregate BLS keys,6.847204,0.521528
+16,Generate VC payload,0.109281,0.087856
+16,Sign with N issuer,89.863124,6.490809
+16,Generate N PoOs,55.764239,6.276654
+16,Create final VC,22.903923,1.031375
+16,Store VC,30.664779,5.359622
+16,Create VP,4.935709,5.090874
+16,Verify VP,220.770637,156.050570
+16,BLS Signature Verification,8.172990,0.522773
+16,DID DocumentS Resolution,206.609662,32.333862
+16,Proofs of Ownership Verification,49.484744,24.257928
+32,Aggregate BLS keys,13.188552,0.779629
+32,Generate VC payload,0.126428,0.084964
+32,Sign with N issuer,176.822006,11.444313
+32,Generate N PoOs,113.221518,10.641049
+32,Create final VC,44.397034,1.354338
+32,Store VC,31.875584,5.196079
+32,Create VP,5.061011,4.052141
+32,Verify VP,194.123365,67.648336
+32,BLS Signature Verification,8.344196,0.751461
+32,DID DocumentS Resolution,219.904920,48.467580
+32,Proofs of Ownership Verification,78.346397,9.586843

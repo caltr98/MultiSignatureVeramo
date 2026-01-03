@@ -7,10 +7,10 @@
   "author": "anon",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^24.0.3",
     "@types/body-parser": "^1.19.6",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.3",
+    "@types/node": "^24.0.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
@@ -26,6 +26,7 @@
     "@noble/hashes": "^1.0.0",
     "@veramo/core": "^6.0.0",
     "@veramo/core-types": "^6.0.0",
+    "@veramo/credential-eip712": "^6.0.0",
     "@veramo/credential-w3c": "^6.0.0",
     "@veramo/data-store": "^6.0.0",
     "@veramo/data-store-json": "^6.0.0",
@@ -58,6 +59,7 @@
     "build": "tsc -p tsconfig.json",
     "server:build": "tsc -p tsconfig.json",
     "server:start": "node src/server-demo/veramo-server.js",
-    "server:client": "node src/server-demo/client.js"
+    "server:client": "node src/server-demo/client.js",
+    "bench:compare": "node src/tools/compare_benchmarks.js"
   }
 }

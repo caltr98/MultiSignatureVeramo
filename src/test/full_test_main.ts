@@ -8,15 +8,7 @@
     } from "./issuers_test.js";
     import fs from 'fs';
     import path from 'path';
-
-    // Path of the CSV file where results will be appended
-    const RESULTS_CSV = path.resolve('./benchmark_results.csv');
-
-    // Write CSV header if file does not exist yet
-    if (!fs.existsSync(RESULTS_CSV)) {
-        const header = 'Issuers,StepName,avg_ms,std_ms\n';
-        fs.writeFileSync(RESULTS_CSV, header);
-    }
+    import { fileURLToPath } from 'url';
 
     //run with yarn ts-node --esm ./src/test/full_test_main.js --claims 40 --size 2048 --issuers 8 --runs 5
     function parseArg(name: string, defaultValue: number): number {
@@ -33,6 +25,17 @@
     const claims_size = parseArg('size', 12)
     const n_issuers = parseArg('issuers', 2)
     const RUNS = parseArg('runs', 2)
+
+    // Path of the CSV file where results will be appended (separate per claims/size)
+    const RESULTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..', 'experimental_results');
+    fs.mkdirSync(RESULTS_DIR, { recursive: true });
+    const RESULTS_CSV = path.join(RESULTS_DIR, `benchmark_results_claims${claims_n}_size${claims_size}.csv`);
+
+    // Write CSV header if file does not exist yet
+    if (!fs.existsSync(RESULTS_CSV)) {
+        const header = 'Issuers,StepName,avg_ms,std_ms\n';
+        fs.writeFileSync(RESULTS_CSV, header);
+    }
 
 
     import {VerifiableCredential, VerifiablePresentation} from "@veramo/core-types";
@@ -163,5 +166,3 @@
 
 
     await cleanup()
-
-

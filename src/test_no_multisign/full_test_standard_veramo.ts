@@ -7,12 +7,7 @@ import path from 'path';
 import { VerifiableCredential, VerifiablePresentation } from '@veramo/core-types';
 import {generateVCPayload} from "./generate_VC_payload.js";
 import {agent} from "../veramo/setup.js";
-
-const RESULTS_CSV = path.resolve('./benchmark_standard.csv');
-
-if (!fs.existsSync(RESULTS_CSV)) {
-    fs.writeFileSync(RESULTS_CSV, 'Issuers,StepName,avg_ms,std_ms\n');
-}
+import { fileURLToPath } from 'url';
 
 function parseArg(name: string, defaultValue: number): number {
     const index = process.argv.indexOf(`--${name}`);
@@ -27,6 +22,13 @@ const claims_n = parseArg('claims', 32);
 const claims_size = parseArg('size', 1024);
 const n_issuers = parseArg('issuers', 8);
 const RUNS = parseArg('runs', 5);
+
+const RESULTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..', 'experimental_results');
+fs.mkdirSync(RESULTS_DIR, { recursive: true });
+const RESULTS_CSV = path.join(RESULTS_DIR, `benchmark_standard_claims${claims_n}_size${claims_size}.csv`);
+if (!fs.existsSync(RESULTS_CSV)) {
+    fs.writeFileSync(RESULTS_CSV, 'Issuers,StepName,avg_ms,std_ms\n');
+}
 
 type BenchmarkResults = Record<string, number>;
 function sleep(ms: number): Promise<void> {
