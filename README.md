@@ -23,7 +23,7 @@ Structure is as follows:
 
 The “best fit” for aggregated BLS multi-signatures is cross-organizational issuance: **multiple independent parties jointly attesting to the same VC payload** (a consortium, coalition, supply chain, or multi-agency workflow).
 
-## Example scenario (Gundam Narrative–inspired)
+## Example scenario
 
 Imagine a “Product Use Consent / Access Authorization” VC for operating a restricted component (e.g., a psycho-frame interface) on a high-risk product.
 
