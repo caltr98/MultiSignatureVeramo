@@ -47,3 +47,51 @@ Issuers,StepName,Size_bytes
 2,PoO (1),134
 2,PoOs to OIss,268
 2,VC to Holder,2499
+2,SingleProofOfPossession,192
+2,BLS Key Exchange + All PoP,612
+2,Claim Agreement,8
+2,Sig to OIss (1),194
+2,Sig to OIss,388
+2,PoO (1),134
+2,PoOs to OIss,268
+2,VC to Holder,2499
+4,SingleProofOfPossession,192
+4,BLS Key Exchange + All PoP,3672
+4,Claim Agreement,60
+4,Sig to OIss (1),194
+4,Sig to OIss,776
+4,PoO (1),134
+4,PoOs to OIss,536
+4,VC to Holder,3017
+8,SingleProofOfPossession,192
+8,BLS Key Exchange + All PoP,17136
+8,Claim Agreement,280
+8,Sig to OIss (1),194
+8,Sig to OIss,1552
+8,PoO (1),134
+8,PoOs to OIss,1072
+8,VC to Holder,4053
+16,SingleProofOfPossession,192
+16,BLS Key Exchange + All PoP,73440
+16,Claim Agreement,1440
+16,Sig to OIss (1),194
+16,Sig to OIss,3104
+16,PoO (1),134
+16,PoOs to OIss,2144
+16,VC to Holder,6125
+2,SingleProofOfPossession,192
+2,BLS Key Exchange + All PoP,612
+2,Claim Agreement,8
+2,Sig to OIss (1),194
+2,Sig to OIss,388
+2,PoO (1),134
+2,PoOs to OIss,268
+2,VC to Holder,2499
+2,SingleProofOfPossession,192
+2,BLS Key Exchange + All PoP,612
+2,Claim Agreement,8
+2,Sig to OIss (1),194
+2,Sig to OIss,388
+2,PoO (1),134
+2,PoOs to OIss,268
+2,VC to Holder,2499

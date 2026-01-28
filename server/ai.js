@@ -26,7 +26,7 @@ class AIIssuerAgent {
         this.llm = new ChatOpenAI({
             model: 'gpt-4o-mini',
             temperature: 0.3,
-            apiKey: "redacted",
+            apiKey: "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",
         });
     }
     async setup() {

@@ -135,9 +135,7 @@ Then compile and run:
 * `yarn tsc -p tsconfig.json` to compile TypeScript to JS
 * `node ./src/<script>.js`
 
-# Baseline (no multisig) EIP712 tests
-
-This is a copy of `src/test_no_multisign/` adapted to issue **EIP712** credentials using `@veramo/credential-eip712`.
+# Baseline (no multisig) EIP712 or JWTProof2020 test tests
 
 - Benchmark: `yarn tsc -p tsconfig.json && node src/test_no_multisign_eip712/full_test_standard_veramo_eip712.js --claims 32 --size 1024 --issuers 8 --runs 5`
 - Message sizes: `yarn tsc -p tsconfig.json && node src/test_no_multisign_eip712/full_sizes_standard_test_main_eip712.js --claims 32 --size 1024 --issuers 8`

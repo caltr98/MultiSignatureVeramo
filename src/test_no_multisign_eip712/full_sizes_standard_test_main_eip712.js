@@ -3,8 +3,8 @@ import { generateVCPayload } from './generate_VC_payload.js';
 import { agent } from '../veramo/setup_eip712.js';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createPresentation } from './holder_test.js';
+import { fileURLToPath } from 'url';
 function parseArg(name, defaultValue) {
     const index = process.argv.indexOf(`--${name}`);
     if (index !== -1 && process.argv[index + 1]) {

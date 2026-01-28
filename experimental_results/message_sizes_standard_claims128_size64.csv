@@ -9,3 +9,11 @@ Issuers,StepName,Size_bytes
 16,Final VP,682248
 32,Total VC Payloads,773120
 32,Final VP,1363736
+2,Total VC Payloads,48320
+2,Final VP,85946
+4,Total VC Payloads,96640
+4,Final VP,171132
+8,Total VC Payloads,193280
+8,Final VP,341504
+16,Total VC Payloads,386560
+16,Final VP,682248
