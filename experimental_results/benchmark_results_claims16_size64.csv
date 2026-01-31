@@ -1,15 +1,4 @@
 Issuers,StepName,avg_ms,std_ms
-2,Aggregate BLS keys,1.362488,0.266545
-2,Generate VC payload,0.090328,0.047227
-2,Sign with N issuer,15.335095,2.542244
-2,Generate N PoOs,9.500162,2.145429
-2,Create final VC,5.242757,1.144243
-2,Store VC,33.737639,12.645484
-2,Create VP,4.418646,2.014510
-2,Verify VP,114.799023,32.584318
-2,BLS Signature Verification,11.973501,2.387770
-2,DID DocumentS Resolution,107.511059,44.169678
-2,Proofs of Ownership Verification,6.611025,1.673712
 4,Aggregate BLS keys,1.634840,0.219298
 4,Generate VC payload,0.079189,0.507499
 4,Sign with N issuer,19.713413,2.428602
@@ -54,3 +43,14 @@ Issuers,StepName,avg_ms,std_ms
 32,BLS Signature Verification,7.186499,0.594053
 32,DID DocumentS Resolution,136.373139,33.648013
 32,Proofs of Ownership Verification,69.305267,7.503079
+2,Aggregate BLS keys,0.996222,0.176096
+2,Generate VC payload,0.063314,0.027615
+2,Sign with N issuer,10.312558,1.317179
+2,Generate N PoOs,6.790539,1.549868
+2,Create final VC,3.423712,0.583961
+2,Store VC,29.564506,16.464146
+2,Create VP,3.402223,1.268288
+2,Verify VP,107.406767,32.240980
+2,BLS Signature Verification,7.774907,0.849765
+2,DID DocumentS Resolution,107.344221,62.158477
+2,Proofs of Ownership Verification,4.462977,0.824214

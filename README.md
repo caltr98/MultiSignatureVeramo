@@ -12,7 +12,6 @@
 
 The benchmark/size scripts now write to `experimental_results/` by default (including when run via `benchmark.sh`).
 
-
 Structure is as follows:
 * plugins/veramo-plugin-multisig: The extension of veramo agent-plugin that allows for creating and verifying multisignature credentials.
 * bls.extend-credential-w3c.ts: A modified version of the W3C credential veramo plugin that allows for multisignature support using bls.
@@ -144,3 +143,37 @@ Notes / env vars:
 
 - `VERAMO_DB_EIP712=database_eip712.sqlite` (optional DB filename override; defaults to `database_eip712.sqlite`)
 - EIP712 verification uses remote `ethr-did-resolver` (requires RPC access and DID resolution to succeed).
+
+## Benchmark script for automated tests
+
+This repository includes a convenient shell script `benchmark.sh` that can automate performance testing for both multisignature and no‑multisignature modes as well as the EIP‑712 baseline.  Rather than invoking individual Node.js scripts by hand, you can run:
+
+```
+./benchmark.sh <start_issuers> <end_issuers>
+```
+
+The script will compile the TypeScript sources (unless you set `SKIP_BUILD=1`) and then loop over issuer counts doubling from `start_issuers` up to `end_issuers` (not exceeding `MAX_ISSUERS`).  For each issuer count and claim size in `CLAIMS_LIST` it will record both message sizes and benchmark timings for multisignature, standard (no multisig) and EIP‑712 modes (unless you disable one of them with the variables below).  Output CSV files are written to the `experimental_results/` directory.
+
+You can customise the benchmark by exporting environment variables before invoking the script:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MAX_ISSUERS` | `32` | Largest number of issuers to test (script stops when doubling would exceed this number). |
+| `CLAIMS_LIST` | `"16 128"` | Space‑separated list of claim counts to benchmark. |
+| `SIZE` | `64` | Size of each claim (in bytes). |
+| `RUNS` | `1000` | Number of iterations for multisig and standard benchmarks. |
+| `EIP712_RUNS` | `30` | Number of iterations for EIP‑712 benchmarks (no sample VC printing). |
+| `RUN_MULTISIG` | `1` | Set to `0` to skip multisignature benchmarks. |
+| `RUN_STANDARD` | `1` | Set to `0` to skip the standard (no multisig) benchmarks. |
+| `RUN_EIP712` | `1` | Set to `0` to skip the EIP‑712 baseline benchmarks. |
+| `RESUME` | `0` | If set to `1`, rows already present in the output CSVs for a given issuer count will be skipped. |
+| `PRUNE` | `0` | If set to `1`, existing rows for a given issuer are deleted before running. |
+| `SKIP_BUILD` | `0` | Set to `1` to skip the initial `yarn tsc` compilation step. |
+| `DEBUG` | `0` | Set to `1` for shell tracing of commands. |
+| `DRY_RUN` | `0` | Set to `1` to print the commands without executing them. |
+
+For example, to benchmark from 2 to 32 issuers with larger messages and only run the multisignature tests, you could run:
+
+```bash
+CLAIMS_LIST="16 32" SIZE=1024 RUN_STANDARD=0 RUN_EIP712=0 ./benchmark.sh 2 32
+```
