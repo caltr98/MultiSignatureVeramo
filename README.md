@@ -122,7 +122,6 @@ Optional env vars:
 
 - `PORT=3001` (server port)
 - `HOST=0.0.0.0` (server bind host, use `0.0.0.0` for remote access)
-- `API_KEY=...` (server requires `x-api-key` for non-GET requests)
 - `BASE_URL=http://localhost:3001` (client server URL)
 - `HOLDERS=2` (client number of holders)
 
