@@ -1,4 +1,4 @@
-import { agent } from '../veramo/setup.js';
+import { agent } from '../src/veramo/setup.js';
 import { Wallet } from "ethers";
 /**
  * Create a single actor identity with:

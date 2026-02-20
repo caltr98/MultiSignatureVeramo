@@ -1,10 +1,8 @@
 import process from 'process';
-import { ChatOpenAI } from '@langchain/openai';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { RunnableSequence } from '@langchain/core/runnables';
+import OpenAI from 'openai';
 // ==== EXISTING INTERNAL CALLS (NO HTTP / NO API SERVER) ====
 import { singleActorSetup } from './single_actor_setup.js';
-import { aggregateBlsKeys, IndividualBlsVPSignatures, buildVPPayloadWithAggKey, createMultiHolderPresentation, createPoO, } from './actors/holder_test.js';
+import { aggregateBlsKeys, IndividualBlsVPSignatures, buildVPPayloadWithAggKey, createMultiHolderPresentation, createPoO, } from '../src/server-demo/actors/holder_test.js';
 // ================= UTIL =================
 function randomOf(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
@@ -19,15 +17,15 @@ function randomPersonality() {
 // ================= AI ISSUER =================
 class AIIssuerAgent {
     name;
-    llm;
+    client;
     state;
     constructor(name) {
         this.name = name;
-        this.llm = new ChatOpenAI({
-            model: 'gpt-4o-mini',
-            temperature: 0.3,
-            apiKey: "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",
-        });
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) {
+            throw new Error('Set OPENAI_API_KEY to use the AI issuer agents');
+        }
+        this.client = new OpenAI({ apiKey });
     }
     async setup() {
         const a = await singleActorSetup(this.name);
@@ -42,10 +40,7 @@ class AIIssuerAgent {
     }
     async deliberate(question, peers = []) {
         const p = this.state.personality;
-        const prompt = ChatPromptTemplate.fromMessages([
-            [
-                'system',
-                `
+        const systemPrompt = `
 You are an AI authority with:
 - Priority bias: ${p.bias}
 - Reasoning style: ${p.style}
@@ -55,25 +50,29 @@ If peer opinions differ and stubbornness < 0.7,
 you may revise your stance.
 
 Respond with a concise final answer only.
-        `.trim(),
-            ],
-            [
-                'human',
-                `
+        `.trim();
+        const peerAnswers = peers.map(o => `- ${o.answer}`).join('\n') || '(none)';
+        const userPrompt = `
 Question: ${question}
 
 Peer answers so far:
-${peers.map(o => `- ${o.answer}`).join('\n') || '(none)'}
+${peerAnswers}
 
 Your answer:
-        `.trim(),
+        `.trim();
+        const res = await this.client.chat.completions.create({
+            model: 'gpt-4o-mini',
+            temperature: 0.3,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
             ],
-        ]);
-        const chain = RunnableSequence.from([prompt, this.llm]);
-        const res = await chain.invoke({});
+        });
+        const answer = res.choices[0]?.message?.content?.trim() ||
+            'No answer produced.';
         return {
             did: this.state.did,
-            answer: String(res.content).trim(),
+            answer,
             confidence: Math.round((1 - p.stubbornness) * 100) / 100,
         };
     }

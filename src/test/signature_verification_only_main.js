@@ -2,6 +2,11 @@ import { cleanup, setup_bls_agents } from "./enviroment_setup.js";
 import { getBlsKeyHex, VCAggregateKeysToSignaturesWithBenchmark } from "./issuers_test.js";
 import fs from 'fs';
 import path from 'path';
+import canonicalizeLib from "canonicalize";
+import { performance } from "node:perf_hooks";
+import bls from "@chainsafe/bls";
+import { hexToBytes } from "@veramo/utils";
+const canonicalize = canonicalizeLib;
 const RESULTS_CSV = path.resolve('./benchmark_results.csv');
 if (!fs.existsSync(RESULTS_CSV)) {
     const header = 'Issuers,StepName,avg_ms,std_ms\n';
@@ -23,10 +28,6 @@ const RUNS = parseArg('runs', 10);
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-import { performance } from "node:perf_hooks";
-import canonicalize from "canonicalize";
-import bls from "@chainsafe/bls";
-import { hexToBytes } from "@veramo/utils";
 const issuers = await setup_bls_agents(n_issuers);
 const holder = (await setup_bls_agents(1))[0];
 await getBlsKeyHex(issuers[0].kid_bls);

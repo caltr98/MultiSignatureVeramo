@@ -1,11 +1,12 @@
 // NEW ALL: LOGIC FOR BLS SIGNATURE ISSUING AND VERIFICATION
-import canonicalize from 'canonicalize';
+import canonicalizeLib from 'canonicalize';
 import { bytesToHex, hexToBytes } from '@veramo/utils';
 import { ethers } from 'ethers';
 /**
  * Verify a BLS-MultiSignature Verifiable Credential then verify the proof of ownerships
  */
 import { performance } from "node:perf_hooks";
+const canonicalize = canonicalizeLib;
 function resolveBlsBackend(value) {
     return value === 'noble' ? 'noble' : 'chainsafe';
 }

@@ -1,6 +1,6 @@
 // This file sets up a set of Veramo Agents
 // Each has their own DID and Keypair for EthrDID, plus a BLS keypair for BLS Signature
-import { agent } from '../veramo/setup.js';
+import { agent } from '../src/veramo/setup.js';
 import { Wallet } from "ethers";
 let agents = [];
 let seq_agent = 0;

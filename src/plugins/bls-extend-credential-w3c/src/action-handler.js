@@ -4,7 +4,7 @@ import { schema } from '@veramo/core-types';
 import { createVerifiableCredentialJwt, createVerifiablePresentationJwt, normalizeCredential, normalizePresentation, verifyCredential as verifyCredentialJWT, verifyPresentation as verifyPresentationJWT, } from 'did-jwt-vc';
 import { decodeJWT } from 'did-jwt';
 import { asArray, bytesToHex, extractIssuer, hexToBytes, removeDIDParameters, isDefined, MANDATORY_CREDENTIAL_CONTEXT, processEntryToArray, intersect, } from '@veramo/utils';
-import canonicalize from 'canonicalize';
+import canonicalizeLib from 'canonicalize';
 var DocumentFormat;
 (function (DocumentFormat) {
     DocumentFormat[DocumentFormat["JWT"] = 0] = "JWT";
@@ -12,6 +12,7 @@ var DocumentFormat;
     DocumentFormat[DocumentFormat["EIP712"] = 2] = "EIP712";
     DocumentFormat[DocumentFormat["BLS"] = 3] = "BLS";
 })(DocumentFormat || (DocumentFormat = {}));
+const canonicalize = canonicalizeLib;
 import { createVerifiableCredentialBls, verifyCredentialBls, signMultiSignatureVerifiableCredentialBls, aggregateMultiSignatureVerifiableCredentialBls, verifyCredentialMultiSignatureBls, generateProofOfOwnershipMultiIssuerVerifiableCredentialBls, verifyCredentialProofOfOwnershipMultiSignatureBls } from './bls-credentials.js';
 import { signMultiSignatureVerifiablePresentationBls, aggregateMultiSignatureVerifiablePresentationBls, verifyPresentationMultiSignatureBls, generateProofOfOwnershipMultiIssuerVerifiablePresentationBls, verifyPresentationProofOfOwnershipMultiSignatureBls, } from './bls-presentations.js';
 function resolveBlsBackend(value) {

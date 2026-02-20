@@ -1,5 +1,5 @@
     import {cleanup, setup_bls_agents} from "./enviroment_setup.js";
-    import {generateVCPayload} from "./generate_VC_payload";
+    import {generateVCPayload} from "./generate_VC_payload.js";
     import {
         generatePayloadToSign,
         getBlsKeyHex,

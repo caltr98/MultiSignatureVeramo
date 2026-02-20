@@ -20,8 +20,6 @@
   },
   "dependencies": {
     "@chainsafe/bls": "^8.1.0",
-    "@langchain/core": "^0.3.24",
-    "@langchain/openai": "^0.3.2",
     "@noble/curves": "1.0.0",
     "@noble/hashes": "^1.0.0",
     "@veramo/core": "^6.0.0",
@@ -47,7 +45,6 @@
     "ethr-did": "^3.0.38",
     "ethr-did-resolver": "^11.0.4",
     "express": "^4.21.2",
-    "langchain": "^0.3.11",
     "openai": "^4.78.0",
     "reflect-metadata": "^0.2.2",
     "sqlite3": "^5.1.7",

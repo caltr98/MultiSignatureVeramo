@@ -8,7 +8,8 @@ export async function benchmarkStep(label, results, fn) {
     return result;
 }
 import { generateVCPayload } from "./generate_VC_payload.js";
-import canonicalize from "canonicalize";
+import canonicalizeLib from "canonicalize";
+const canonicalize = canonicalizeLib;
 async function getBlsPublicKeyHex(kid) {
     const key = await agent.keyManagerGet({ kid });
     return key.publicKeyHex;

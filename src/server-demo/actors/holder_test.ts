@@ -1,7 +1,9 @@
 import { IMessage, VerifiableCredential, VerifiablePresentation } from '@veramo/core'
 import { PresentationPayload } from '@veramo/core-types'
 import { agent } from '../../veramo/setup.js'
-import canonicalize from 'canonicalize'
+import canonicalizeLib from 'canonicalize'
+
+const canonicalize = canonicalizeLib as unknown as (input: unknown) => string | undefined
 
 /** Holder descriptor (mirrors issuer struct shape) */
 export interface HolderInfo {
@@ -147,4 +149,3 @@ export async function createSingleHolderPresentationFromStoredVCs(
     proofFormat,
   })
 }
-

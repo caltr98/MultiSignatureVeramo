@@ -1,6 +1,6 @@
 
 // Assuming you already have this helper in the same file:
-import {agent} from "../veramo/setup.js";
+import { agent } from '../src/veramo/setup.js'
 // Verification of a PoP (Proof of Possession) using @chainsafe/bls, mirroring your VC verifiers.
 
 import bls from '@chainsafe/bls'
@@ -111,4 +111,3 @@ export async function verifyProofOfPossessionStrict(
         return { valid: false, reason: `Verification error: ${e?.message || e}`, publicKeyHex: publicKeyHexInMsg, nonce: nonceInMsg }
     }
 }
-

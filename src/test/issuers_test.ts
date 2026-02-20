@@ -22,11 +22,13 @@ import { generateVCPayload } from "./generate_VC_payload.js"
 import {
     ICreateProofOfOwnershipMultiIssuerVerifiableCredentialArgs,
     ISignMultiIssuerVerifiableCredentialArgs
-} from "../plugins/bls-extend-credential-w3c/src/action-handler"
+} from "../plugins/bls-extend-credential-w3c/src/action-handler.js"
 import {MinimalImportableKey} from "@veramo/core-types";
-import canonicalize from "canonicalize";
+import canonicalizeLib from "canonicalize";
 import {ProofType, UnsignedCredential} from "@veramo/core";
 import { ICreateVerifiableCredentialArgs, VerifiableCredential } from '@veramo/core-types'
+
+const canonicalize = canonicalizeLib as unknown as (input: unknown) => string | undefined
 
 interface AgentInfo {
     did: string

@@ -1,5 +1,5 @@
-import {cleanup, setup_bls_agents} from "./enviroment_setup.js";
-import {generateVCPayload} from "./generate_VC_payload";
+import { cleanup, setup_bls_agents } from "./enviroment_setup.js";
+import { generateVCPayload } from "./generate_VC_payload.js";
 import {
     generatePayloadToSign,
     getBlsKeyHex,
@@ -8,7 +8,15 @@ import {
 } from "./issuers_test.js";
 import fs from 'fs';
 import path from 'path';
+import canonicalizeLib from "canonicalize";
+import { VerifiableCredential, VerifiablePresentation } from "@veramo/core-types";
+import { createSingleHolderPresentation, storeCredential } from "./holder_test.js";
+import { verifyMultiSignatureVC, verifyVP } from "./verifier_test.js";
+import { performance } from "node:perf_hooks";
+import bls from "@chainsafe/bls";
+import { hexToBytes } from "@veramo/utils";
 
+const canonicalize = canonicalizeLib as unknown as (input: unknown) => string | undefined
 const RESULTS_CSV = path.resolve('./benchmark_results.csv');
 
 if (!fs.existsSync(RESULTS_CSV)) {
@@ -30,20 +38,11 @@ const claims_size = parseArg('size', 1024)
 const n_issuers = parseArg('issuers', 12)
 const RUNS = parseArg('runs', 10)
 
-import {VerifiableCredential, VerifiablePresentation} from "@veramo/core-types";
-import {createSingleHolderPresentation, storeCredential} from "./holder_test.js";
-import {verifyMultiSignatureVC, verifyVP} from "./verifier_test.js";
-
 type BenchmarkResults = Record<string, number>
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
-
-import {performance} from "node:perf_hooks";
-import canonicalize from "canonicalize";
-import bls from "@chainsafe/bls";
-import {hexToBytes} from "@veramo/utils";
 
 const issuers = await setup_bls_agents(n_issuers);
 const holder = (await setup_bls_agents(1))[0];

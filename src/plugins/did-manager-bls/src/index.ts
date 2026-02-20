@@ -4,7 +4,7 @@
  *
  * @packageDocumentation
  */
-export { DIDManagerBls } from './bls-id-manager'
+export { DIDManagerBls } from './bls-id-manager.js'
 export { AbstractIdentifierProvider } from './abstract-identifier-provider.js'
 export { AbstractDIDStore } from './abstract-identifier-store.js'
 export { MemoryDIDStore } from './memory-did-store.js'

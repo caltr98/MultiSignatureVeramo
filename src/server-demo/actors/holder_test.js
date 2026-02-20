@@ -1,5 +1,6 @@
 import { agent } from '../../veramo/setup.js';
-import canonicalize from 'canonicalize';
+import canonicalizeLib from 'canonicalize';
+const canonicalize = canonicalizeLib;
 /** Store VC */
 export async function storeCredential(vc) {
     const stored = await agent.dataStoreSaveVerifiableCredential({

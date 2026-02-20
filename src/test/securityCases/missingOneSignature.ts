@@ -6,7 +6,7 @@ import { generateVCPayload } from "../generate_VC_payload.js"
 import {
     ICreateProofOfOwnershipMultiIssuerVerifiableCredentialArgs,
     ISignMultiIssuerVerifiableCredentialArgs
-} from "../../plugins/bls-extend-credential-w3c/src/action-handler"
+} from "../../plugins/bls-extend-credential-w3c/src/action-handler.js"
 import {MinimalImportableKey} from "@veramo/core-types";
 import canonicalize from "canonicalize";
 import {ProofType, UnsignedCredential} from "@veramo/core";

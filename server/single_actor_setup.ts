@@ -1,5 +1,5 @@
-import { agent } from '../veramo/setup.js'
-import {IDIDBlsManagerAddKeyArgs} from "../plugins/did-manager-bls/src/bls-id-manager.js";
+import { agent } from '../src/veramo/setup.js'
+import { IDIDBlsManagerAddKeyArgs } from '../src/plugins/did-manager-bls/src/bls-id-manager.js'
 import {Wallet} from "ethers";
 import {MinimalImportableKey} from "@veramo/core-types";
 

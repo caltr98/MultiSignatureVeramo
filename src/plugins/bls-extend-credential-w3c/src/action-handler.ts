@@ -62,7 +62,7 @@ import {
 //import //debug from '//debug'
 import { Resolvable } from 'did-resolver'
 
-import canonicalize from 'canonicalize'
+import canonicalizeLib from 'canonicalize'
 
 const enum DocumentFormat {
     JWT,
@@ -70,6 +70,8 @@ const enum DocumentFormat {
     EIP712,
     BLS ,
 }
+
+const canonicalize = canonicalizeLib as unknown as (input: unknown) => string | undefined
 import {
     createVerifiableCredentialBls,
     verifyCredentialBls,

@@ -21,7 +21,7 @@ async function postJson<T>(baseUrl: string, path: string, body: any): Promise<T>
     },
     body: JSON.stringify(body),
   })
-  const json = await res.json()
+  const json: any = await res.json()
   if (!res.ok || json?.ok === false) {
     throw new Error(`${path} failed: ${JSON.stringify(json)}`)
   }

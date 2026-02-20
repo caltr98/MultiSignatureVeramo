@@ -5,10 +5,10 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import { createProofOfPossessionPerActor, verifyProofOfPossessionStrict } from './ProofOfPossessionProtocol.js';
 // helper modules
-import { aggregateBlsKeys, IndividualBlsVPSignatures, buildVPPayloadWithAggKey, createPoO, createMultiHolderPresentation, storeCredential, createSingleHolderPresentationFromStoredVCs } from './actors/holder_test.js';
-import { verifyPoOVP, verifyMultiSignatureVP, verifyVCsFromVP, verifyVCs, verifyVP } from './actors/verifier_test.js';
+import { aggregateBlsKeys, IndividualBlsVPSignatures, buildVPPayloadWithAggKey, createPoO, createMultiHolderPresentation, storeCredential, createSingleHolderPresentationFromStoredVCs } from '../src/server-demo/actors/holder_test.js';
+import { verifyPoOVP, verifyMultiSignatureVP, verifyVCsFromVP, verifyVCs, verifyVP } from '../src/server-demo/actors/verifier_test.js';
 import { singleActorSetup } from './single_actor_setup.js';
-import { createVC } from './actors/issuers_test.js';
+import { createVC } from '../src/server-demo/actors/issuers_test.js';
 import * as fs from "node:fs";
 import path from "node:path"; // adjust path
 const app = express();

@@ -78,6 +78,16 @@ Example:
 - `VERAMO_BLS_BACKEND=chainsafe node ...`
 - `VERAMO_BLS_BACKEND=noble node ...`
 
+## ⚠️ TEST AGAINST ROGUE-KEY ATTACKS
+
+This repo includes a runnable rogue-key attack simulation to ensure PoO/PoP binding is enforced for BLS aggregates.
+
+- Script: `validation/rogue-key-attacks/rka_rogue_key_attack.ts` (run compiled JS after `yarn tsc`)
+- Run: `VERAMO_BLS_BACKEND=chainsafe node validation/rogue-key-attacks/rka_rogue_key_attack.js` (or `noble`)
+- Baseline (honest): aggregates honest BLS keys, attaches fresh PoOs, expected `verified: true` (requires DID resolution via the configured Sepolia RPC)
+- Rogue attempt: attacker forges a rogue BLS key (algebraically cancels honest PK), signs once, and reuses a stale PoO for the honest issuer; expected `verified: false` if PoO binding works
+- If you see RPC/DNS errors (e.g., `eth-sepolia.g.alchemy.com`), point `src/veramo/setup.ts` at a reachable resolver endpoint
+
 # Testing mains
 To test the multisignature functionality, you can use the following scripts:
 * Concerto-BLS: A sample of BLS following the model with a leader that aggregates the signatures with bls key and public bls keys and puts them on a VC
@@ -145,7 +155,7 @@ Notes / env vars:
 
 ## Benchmark script for automated tests
 
-This repository includes a convenient shell script `benchmark.sh` that can automate performance testing for both multisignature and no‑multisignature modes as well as the EIP‑712 baseline.  Rather than invoking individual Node.js scripts by hand, you can run:
+This repository includes a convenient shell script `benchmark.sh` that can automate performance testing for both multisignature and no‑multisignature modes as well as the EIP‑712 baseline.  Rather than invoking individual Node.js scripts by hand, you can run:node
 
 ```
 ./benchmark.sh <start_issuers> <end_issuers>

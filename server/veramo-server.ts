@@ -15,13 +15,13 @@ import {
     createMultiHolderPresentation,
     storeCredential,
     createSingleHolderPresentationFromStoredVCs
-} from './actors/holder_test.js'
+} from '../src/server-demo/actors/holder_test.js'
 import {
     verifyPoOVP, verifyMultiSignatureVP, PoOMultiHolderVP, verifyVCsFromVP, verifyVCs, verifyVP
-} from './actors/verifier_test.js'
+} from '../src/server-demo/actors/verifier_test.js'
 
 import { singleActorSetup } from './single_actor_setup.js'
-import { createVC } from './actors/issuers_test.js'
+import { createVC } from '../src/server-demo/actors/issuers_test.js'
 import * as fs from "node:fs";
 import path from "node:path"; // adjust path
 
@@ -527,5 +527,4 @@ const server = app.listen(PORT, () => {
 
 process.on("SIGINT", shutdown)
 process.on("SIGTERM", shutdown)
-
 
