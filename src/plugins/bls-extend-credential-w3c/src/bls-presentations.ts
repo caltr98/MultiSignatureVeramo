@@ -14,11 +14,8 @@ import {
     ProofOfOwnershipMultiIssuerVerifiableCredential,
     ProofOfOwnershipMultiIssuerVerifiablePresentation
 } from './action-handler.js'
-import { agent } from '../../../veramo/setup.js'
-import { verifyMessage } from 'ethers';
 
 import { ethers } from 'ethers'
-import {sha256} from "@noble/hashes/sha256";
 /**
  * Verify a BLS-MultiSignature Verifiable Credential then verify the proof of ownerships
  */

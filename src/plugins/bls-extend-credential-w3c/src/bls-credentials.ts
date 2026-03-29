@@ -4,12 +4,8 @@ import { DIDResolutionOptions, VerifiableCredential, IVerifyResult, VerifierAgen
 import canonicalizeLib from 'canonicalize'
 import { bytesToHex, hexToBytes } from '@veramo/utils'
 import { MultiIssuerVerifiableCredential, ProofOfOwnershipMultiIssuerVerifiableCredential } from './action-handler.js'
-import { agent } from '../../../veramo/setup.js'
-import { verifyMessage } from 'ethers';
-
 
 import { ethers } from 'ethers'
-import {sha256} from "@noble/hashes/sha256";
 /**
  * Verify a BLS-MultiSignature Verifiable Credential then verify the proof of ownerships
  */
@@ -210,7 +206,7 @@ export async function aggregateMultiSignatureVerifiableCredentialBls(
         alg: string
         did: string
         signer: (data: Uint8Array) => Promise<string>
-    },list_of_signatures: [string],
+    },list_of_signatures: string[],
     settings?: {
         resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string }
         fetchRemoteContexts?: boolean

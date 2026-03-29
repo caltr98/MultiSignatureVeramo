@@ -1,21 +1,21 @@
 {
-  "name": "@veramo/kms-local",
-  "description": "Veramo KMS implementation that provides Ed25519 and secp256k1 crypto",
-  "version": "6.0.0",
+  "name": "@veramo-community/kms-local-bls",
+  "description": "Veramo local KMS extensions with BLS key support alongside the standard local key flows.",
+  "version": "0.1.0",
   "main": "build/index.js",
   "exports": "./build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "extract-api": "node ../cli/bin/veramo.js dev extract-api"
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build"
   },
   "dependencies": {
+    "@chainsafe/bls": "^8.1.0",
     "@noble/curves": "^1.4.2",
     "@stablelib/nacl": "^1.0.4",
-    "@veramo/core-types": "workspace:^",
-    "@veramo/key-manager": "workspace:^",
-    "@veramo/utils": "workspace:^",
-    "debug": "^4.3.3",
+    "@veramo/core-types": "^6.0.0",
+    "@veramo/key-manager": "^6.0.0",
+    "@veramo/utils": "^6.0.0",
     "did-jwt": "^8.0.0",
     "ethers": "^6.11.1"
   },
@@ -25,23 +25,12 @@
   },
   "files": [
     "build/**/*",
-    "src/**/*",
     "README.md",
     "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/decentralized-identity/veramo.git",
-    "directory": "packages/kms-local"
-  },
-  "author": "Consensys Mesh R&D <hello@veramo.io>",
-  "contributors": [
-    "Simonas Karuzas <simonas.karuzas@mesh.xyz>",
-    "Mircea Nistor <mircea.nistor@mesh.xyz>"
-  ],
   "keywords": [
     "Veramo",
     "DID",
@@ -63,7 +52,8 @@
     "wallet",
     "eth_sign",
     "EIP712",
-    "EIP191"
+    "EIP191",
+    "BLS"
   ],
   "license": "Apache-2.0",
   "type": "module",

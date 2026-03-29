@@ -1,20 +1,14 @@
 {
-  "extends": "../tsconfig.settings.json",
+  "extends": "../tsconfig.package.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "build",
-    "declarationDir": "build",
-    "skipLibCheck": true
+    "declarationDir": "build"
   },
-  "references": [
-    {
-      "path": "../core-types"
-    },
-    {
-      "path": "../key-manager"
-    },
-    {
-      "path": "../utils"
-    }
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "build"
   ]
 }

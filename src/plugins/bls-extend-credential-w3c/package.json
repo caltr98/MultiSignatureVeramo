@@ -1,25 +1,27 @@
 {
-  "name": "@veramo/credential-w3c",
-  "description": "Veramo plugin for working with W3C Verifiable Credentials & Presentations.",
-  "version": "6.0.0",
+  "name": "@veramo-community/credential-w3c-bls-multisig",
+  "description": "Veramo credential plugin extensions for BLS and multisignature VC and VP flows.",
+  "version": "0.1.0",
   "main": "build/index.js",
   "exports": {
     ".": "./build/index.js"
   },
   "types": "build/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "extract-api": "node ../cli/bin/veramo.js dev extract-api"
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build"
   },
   "dependencies": {
-    "@veramo/core-types": "workspace:^",
-    "@veramo/message-handler": "workspace:^",
-    "@veramo/utils": "workspace:^",
+    "@chainsafe/bls": "^8.1.0",
+    "@noble/curves": "^1.4.2",
+    "@veramo/core-types": "^6.0.0",
+    "@veramo/message-handler": "^6.0.0",
+    "@veramo/utils": "^6.0.0",
     "canonicalize": "^2.0.0",
-    "debug": "^4.3.3",
     "did-jwt": "^8.0.0",
     "did-jwt-vc": "^4.0.0",
     "did-resolver": "^4.1.0",
+    "ethers": "^6.11.1",
     "uuid": "^11.0.0"
   },
   "optionalDependencies": {
@@ -32,31 +34,20 @@
   },
   "files": [
     "build/**/*",
-    "src/**/*",
     "README.md",
     "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/decentralized-identity/veramo.git",
-    "directory": "packages/credential-w3c"
-  },
-  "author": "Consensys Mesh R&D <hello@veramo.io>",
-  "contributors": [
-    "Simonas Karuzas <simonas.karuzas@mesh.xyz>",
-    "Mircea Nistor <mircea.nistor@mesh.xyz>"
-  ],
   "keywords": [
     "Veramo",
     "DID",
     "Verifiable Credential",
     "JWT",
     "W3C",
-    "aggregator",
-    "vc-jwt",
+    "BLS",
+    "multisignature",
     "veramo-plugin"
   ],
   "license": "Apache-2.0",

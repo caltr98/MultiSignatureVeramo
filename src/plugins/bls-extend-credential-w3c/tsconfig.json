@@ -1,24 +1,15 @@
 {
-  "extends": "../tsconfig.settings.json",
+  "extends": "../tsconfig.package.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "build",
-    "declarationDir": "build",
-    // https://github.com/transmute-industries/vc.js/issues/60
-    "skipLibCheck": true
+    "declarationDir": "build"
   },
-  "references": [
-    {
-      "path": "../core-types"
-    },
-    {
-      "path": "../message-handler"
-    },
-    {
-      "path": "../utils"
-    }
-  ],
   "include": [
-    "./**/*.ts"
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "build",
+    "src/**/__tests__/**"
   ]
 }

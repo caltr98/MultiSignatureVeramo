@@ -1,19 +1,17 @@
 {
-  "name": "@veramo/did-provider-ethr",
-  "description": "Veramo ethr-did based identity controller plugin.",
-  "version": "6.0.0",
+  "name": "@veramo-community/did-provider-ethr-bls",
+  "description": "Veramo did:ethr identifier provider extensions for publishing and managing BLS material.",
+  "version": "0.1.0",
   "main": "build/index.js",
   "exports": "./build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "extract-api": "node ../cli/bin/veramo.js dev extract-api"
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build"
   },
   "dependencies": {
-    "@veramo/core-types": "workspace:^",
-    "@veramo/did-manager": "workspace:^",
-    "@veramo/utils": "workspace:^",
-    "debug": "^4.3.3",
+    "@veramo/core-types": "^6.0.0",
+    "@veramo/did-manager": "^6.0.0",
     "ethers": "^6.11.1",
     "ethr-did": "^3.0.21"
   },
@@ -23,23 +21,12 @@
   },
   "files": [
     "build/**/*",
-    "src/**/*",
     "README.md",
     "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/decentralized-identity/veramo.git",
-    "directory": "packages/did-provider-ethr"
-  },
-  "author": "Consensys Mesh R&D <hello@veramo.io>",
-  "contributors": [
-    "Simonas Karuzas <simonas.karuzas@mesh.xyz>",
-    "Mircea Nistor <mircea.nistor@mesh.xyz>"
-  ],
   "keywords": [
     "Veramo",
     "DID",
@@ -48,7 +35,8 @@
     "did:ethr",
     "EIP1056",
     "ethr-did",
-    "Ethereum"
+    "Ethereum",
+    "BLS"
   ],
   "license": "Apache-2.0",
   "type": "module",

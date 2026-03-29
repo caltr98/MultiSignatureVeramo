@@ -142,21 +142,141 @@ export type ProofOfOwnershipMultiIssuerVerifiablePresentation = Omit<VerifiableP
     aggregated_bls_public_key:string;
 }
 
-
+/**
+ * Arguments for verifying a BLS multisignature credential.
+ *
+ * @public
+ */
 export interface IVerifyMultisignatureCredentialArgs {
     credential: MultiIssuerVerifiableCredential;
-    policies?: any; // Optional: replace with CredentialProofPolicy if you're using it
-    [x: string]: any; // forward-compatible with Veramo's base args
+    policies?: IVerifyCredentialArgs['policies'];
+    resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string };
 }
 
+/**
+ * Arguments for verifying a proof-of-ownership protected BLS multisignature credential.
+ *
+ * @public
+ */
+export interface IVerifyProofOfOwnershipMultisignatureCredentialArgs {
+    credential: ProofOfOwnershipMultiIssuerVerifiableCredential;
+    policies?: IVerifyCredentialArgs['policies'];
+    resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string };
+}
 
+/**
+ * Arguments for collecting a partial BLS signature for a multi-issuer credential.
+ *
+ * @public
+ */
 export type ISignMultiIssuerVerifiableCredentialArgs = Omit<ICreateVerifiableCredentialArgs, 'issuer' | 'issuanceDate'> & {
     issuer:string ;
 }
+
+/**
+ * Arguments for aggregating issuer signatures into a multisigned credential.
+ *
+ * @public
+ */
+export interface ICreateMultiIssuerVerifiableCredentialArgs extends Omit<ICreateVerifiableCredentialArgs, 'issuer'> {
+    issuer: string | { id: string };
+    signatures: string[];
+}
+
+/**
+ * Arguments for creating a proof-of-ownership protected multisignature credential.
+ *
+ * @public
+ */
 export type ICreateProofOfOwnershipMultiIssuerVerifiableCredentialArgs =
     Omit<ICreateVerifiableCredentialArgs, 'issuer' | 'issuanceDate'> & {
     signatures: string[];
     proofsOfOwnership: string[];
+}
+
+/**
+ * Arguments for aggregating BLS public keys.
+ *
+ * @public
+ */
+export interface IAggregateBlsPublicKeysArgs {
+    list_of_publicKeyHex: string[];
+}
+
+/**
+ * Result returned by the BLS public key aggregation helper.
+ *
+ * @public
+ */
+export interface IAggregateBlsPublicKeysResult {
+    bls_aggregated_pubkey: string;
+}
+
+/**
+ * A serializable partial multisignature fragment.
+ *
+ * @public
+ */
+export interface IMultisignatureFragment {
+    payloadToSign: string;
+    signatureHex: string;
+}
+
+/**
+ * Result returned when collecting a partial multisignature.
+ *
+ * @public
+ */
+export interface IMultisignatureSigningResult {
+    signatureData: IMultisignatureFragment;
+}
+
+/**
+ * Arguments for collecting a partial BLS signature for a multi-holder presentation.
+ *
+ * @public
+ */
+export interface ISignMultiHolderVerifiablePresentationArgs extends ICreateVerifiablePresentationArgs {
+    holder: string;
+}
+
+/**
+ * Arguments for aggregating holder signatures into a multisigned presentation.
+ *
+ * @public
+ */
+export interface ICreateMultiHolderVerifiablePresentationArgs extends ICreateVerifiablePresentationArgs {
+    signatures: string[];
+}
+
+/**
+ * Arguments for creating a proof-of-ownership protected multisignature presentation.
+ *
+ * @public
+ */
+export interface ICreateProofOfOwnershipMultiHolderVerifiablePresentationArgs extends ICreateVerifiablePresentationArgs {
+    signatures: string[];
+    proofsOfOwnership: string[];
+}
+
+/**
+ * Arguments for verifying a BLS multisignature presentation.
+ *
+ * @public
+ */
+export interface IVerifyMultisignaturePresentationArgs {
+    presentation: MultiIssuerVerifiablePresentation;
+    resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string };
+}
+
+/**
+ * Arguments for verifying a proof-of-ownership protected BLS multisignature presentation.
+ *
+ * @public
+ */
+export interface IVerifyProofOfOwnershipMultisignaturePresentationArgs {
+    presentation: ProofOfOwnershipMultiIssuerVerifiablePresentation;
+    resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string };
 }
 
 
@@ -165,15 +285,15 @@ export interface ICustomCredentialPlugin extends IPluginMethodMap {
     signMultiIssuedVerifiableCredential(
         args: ISignMultiIssuerVerifiableCredentialArgs,
         context: IssuerAgentContext
-    ): Promise<VerifiableCredential>;
+    ): Promise<IMultisignatureSigningResult>;
 
     aggregateBlsPublicKeys(
-        args: { list_of_publicKeyHex: string[] },
+        args: IAggregateBlsPublicKeysArgs,
         context: IssuerAgentContext
-    ): Promise<{ bls_aggregated_pubkey: string }>;
+    ): Promise<IAggregateBlsPublicKeysResult>;
 
     createMultiIssuerVerifiableCredential(
-        args: ICreateVerifiableCredentialArgs,
+        args: ICreateMultiIssuerVerifiableCredentialArgs,
         context: IssuerAgentContext
     ): Promise<VerifiableCredential>;
 
@@ -188,32 +308,32 @@ export interface ICustomCredentialPlugin extends IPluginMethodMap {
     ): Promise<IVerifyResult>;
 
     verifyProofOfOwnershipMultisignatureCredential(
-        args: IVerifyMultisignatureCredentialArgs,
+        args: IVerifyProofOfOwnershipMultisignatureCredentialArgs,
         context: VerifierAgentContext
     ): Promise<IVerifyResult>;
 
     signMultiHolderVerifiablePresentation(
-        args: ICreateVerifiablePresentationArgs & { holder: string },
+        args: ISignMultiHolderVerifiablePresentationArgs,
         context: IssuerAgentContext
-    ): Promise<any>;
+    ): Promise<IMultisignatureSigningResult>;
 
     createMultiHolderVerifiablePresentation(
-        args: ICreateVerifiablePresentationArgs & { signatures: string[] },
+        args: ICreateMultiHolderVerifiablePresentationArgs,
         context: IssuerAgentContext
     ): Promise<VerifiablePresentation>;
 
     createProofOfOwnershipMultiHolderVerifiablePresentation(
-        args: ICreateVerifiablePresentationArgs & { signatures: string[]; proofsOfOwnership: string[] },
+        args: ICreateProofOfOwnershipMultiHolderVerifiablePresentationArgs,
         context: IssuerAgentContext
     ): Promise<VerifiablePresentation>;
 
     verifyMultisignaturePresentation(
-        args: { presentation: MultiIssuerVerifiablePresentation } & Record<string, any>,
+        args: IVerifyMultisignaturePresentationArgs,
         context: VerifierAgentContext
     ): Promise<IVerifyResult>;
 
     verifyProofOfOwnershipMultisignaturePresentation(
-        args: { presentation: ProofOfOwnershipMultiIssuerVerifiablePresentation } & Record<string, any>,
+        args: IVerifyProofOfOwnershipMultisignaturePresentationArgs,
         context: VerifierAgentContext
     ): Promise<IVerifyResult>;
 }
@@ -225,7 +345,7 @@ export interface ICustomCredentialPlugin extends IPluginMethodMap {
  * @public
  */
 export class CredentialPlugin implements IAgentPlugin {
-    readonly methods: ICredentialPlugin
+    readonly methods: ICredentialPlugin & ICustomCredentialPlugin
     private readonly blsBackend: BlsBackend
     readonly schema = {
         components: {
@@ -237,13 +357,12 @@ export class CredentialPlugin implements IAgentPlugin {
                 ...schema.ICredentialIssuer.components.methods,
                 ...schema.ICredentialVerifier.components.methods,
 
-                // Added description for new method
                 signMultiIssuedVerifiableCredential: {
                     description: 'Signs a credential with BLS or other proof format in a multi-issuer scenario',
                     arguments: {
                         type: 'object',
                         properties: {
-                            credential: { type: 'object' }, // You can reference specific credential schema here
+                            credential: { type: 'object' },
                             proofFormat: { type: 'string' },
                             keyRef: { type: 'string' },
                             save: { type: 'boolean' },
@@ -252,24 +371,79 @@ export class CredentialPlugin implements IAgentPlugin {
                         required: ['credential'],
                     },
                     returns: {
-                        type: 'object', // Or you can use a reference like `$ref: "#/components/schemas/VerifiableCredential"`
+                        type: 'object',
+                        properties: {
+                            signatureData: {
+                                type: 'object',
+                                properties: {
+                                    payloadToSign: { type: 'string' },
+                                    signatureHex: { type: 'string' },
+                                },
+                                required: ['payloadToSign', 'signatureHex'],
+                            },
+                        },
+                        required: ['signatureData'],
                     },
-                }, createMultiIssuerVerifiableCredential: {
+                },
+                aggregateBlsPublicKeys: {
+                    description: 'Aggregates multiple BLS public keys into one public key',
+                    arguments: {
+                        type: 'object',
+                        properties: {
+                            list_of_publicKeyHex: { type: 'array', items: { type: 'string' } },
+                        },
+                        required: ['list_of_publicKeyHex'],
+                    },
+                    returns: {
+                        type: 'object',
+                        properties: {
+                            bls_aggregated_pubkey: { type: 'string' },
+                        },
+                        required: ['bls_aggregated_pubkey'],
+                    },
+                },
+                createMultiIssuerVerifiableCredential: {
                     description: 'Aggregates BLS signatures from multiple issuers and produces a final Verifiable Credential',
                     arguments: {
                         type: 'object',
                         properties: {
-                            credential: { type: 'object' }, // Adjust to your credential schema if you have one
+                            credential: { type: 'object' },
                             proofFormat: { type: 'string' },
-                            issuer: { type: 'string' },
+                            issuer: {
+                                oneOf: [
+                                    { type: 'string' },
+                                    {
+                                        type: 'object',
+                                        properties: { id: { type: 'string' } },
+                                        required: ['id'],
+                                    },
+                                ],
+                            },
                             keyRef: { type: 'string' },
+                            signatures: { type: 'array', items: { type: 'string' } },
                             save: { type: 'boolean' },
                             now: { type: 'number' },
                         },
-                        required: ['credential', 'proofFormat', 'issuer'],
+                        required: ['credential', 'proofFormat', 'issuer', 'signatures'],
                     },
                     returns: {
-                        type: 'object', // Could also be a $ref if using full OpenAPI schemas
+                        type: 'object',
+                    },
+                },
+                createProofOfOwnershipMultiIssuerVerifiableCredential: {
+                    description: 'Creates a proof-of-ownership protected multisignature credential',
+                    arguments: {
+                        type: 'object',
+                        properties: {
+                            credential: { type: 'object' },
+                            proofFormat: { type: 'string' },
+                            signatures: { type: 'array', items: { type: 'string' } },
+                            proofsOfOwnership: { type: 'array', items: { type: 'string' } },
+                        },
+                        required: ['credential', 'proofFormat', 'signatures', 'proofsOfOwnership'],
+                    },
+                    returns: {
+                        type: 'object',
                     },
                 },
                 verifyMultisignatureCredential: {
@@ -277,19 +451,48 @@ export class CredentialPlugin implements IAgentPlugin {
                     arguments: {
                         type: 'object',
                         properties: {
-                            credential: { type: 'object' }, // can refine with context/type/multi_issuers/proof, etc
-                            policies: { type: 'object' }
+                            credential: { type: 'object' },
+                            policies: { type: 'object' },
+                            resolutionOptions: { type: 'object' },
                         },
-                        required: ['credential']
+                        required: ['credential'],
                     },
                     returns: {
-                        type: 'object' // IVerifyResult
-                    }
+                        type: 'object',
+                    },
+                },
+                verifyProofOfOwnershipMultisignatureCredential: {
+                    description: 'Verifies a proof-of-ownership protected multisignature credential',
+                    arguments: {
+                        type: 'object',
+                        properties: {
+                            credential: { type: 'object' },
+                            policies: { type: 'object' },
+                            resolutionOptions: { type: 'object' },
+                        },
+                        required: ['credential'],
+                    },
+                    returns: {
+                        type: 'object',
+                    },
                 },
                 signMultiHolderVerifiablePresentation: {
                     description: 'Collect a BLS partial signature for a multi-holder VP',
                     arguments: { type: 'object', properties: { presentation: {type:'object'}, holder:{type:'string'}, keyRef:{type:'string'} }, required: ['presentation','holder'] },
-                    returns: { type: 'object' },
+                    returns: {
+                        type: 'object',
+                        properties: {
+                            signatureData: {
+                                type: 'object',
+                                properties: {
+                                    payloadToSign: { type: 'string' },
+                                    signatureHex: { type: 'string' },
+                                },
+                                required: ['payloadToSign', 'signatureHex'],
+                            },
+                        },
+                        required: ['signatureData'],
+                    },
                 },
                 createMultiHolderVerifiablePresentation: {
                     description: 'Aggregate BLS partial signatures into a multi-holder VP',
@@ -303,12 +506,12 @@ export class CredentialPlugin implements IAgentPlugin {
                 },
                 verifyMultisignaturePresentation: {
                     description: 'Verify multi-holder VP aggregated BLS signature',
-                    arguments: { type:'object', properties:{ presentation:{type:'object'} }, required:['presentation'] },
+                    arguments: { type:'object', properties:{ presentation:{type:'object'}, resolutionOptions:{type:'object'} }, required:['presentation'] },
                     returns: { type:'object' },
                 },
                 verifyProofOfOwnershipMultisignaturePresentation: {
                     description: 'Verify multi-holder VP PoO + aggregated BLS signature',
-                    arguments: { type:'object', properties:{ presentation:{type:'object'} }, required:['presentation'] },
+                    arguments: { type:'object', properties:{ presentation:{type:'object'}, resolutionOptions:{type:'object'} }, required:['presentation'] },
                     returns: { type:'object' },
                 }
             },
@@ -345,9 +548,11 @@ export class CredentialPlugin implements IAgentPlugin {
         }
     }
 
-
-    //NEW: verification of Multi-signature BLS credentials
-    /** {@inheritdoc @veramo/core-types#ICredentialVerifier.verifyCredential} */
+    /**
+     * Verifies a multisignature credential using the issuer list embedded in the document.
+     *
+     * @public
+     */
     async verifyMultisignatureCredential(args: IVerifyMultisignatureCredentialArgs, context: VerifierAgentContext): Promise<IVerifyResult> {
         let { credential, policies, ...otherOptions } = args
         let verificationResult: IVerifyResult = { verified: false }
@@ -375,11 +580,12 @@ export class CredentialPlugin implements IAgentPlugin {
         }
         return verificationResult
     }
-
-
-    //NEw: verification of Proof of Ownership Multi-signature BLS credentials
-    /** {@inheritdoc @veramo/core-types#ICredentialVerifier.verifyCredential} */
-    async verifyProofOfOwnershipMultisignatureCredential(args: IVerifyMultisignatureCredentialArgs, context: VerifierAgentContext): Promise<IVerifyResult> {
+    /**
+     * Verifies a proof-of-ownership protected multisignature credential.
+     *
+     * @public
+     */
+    async verifyProofOfOwnershipMultisignatureCredential(args: IVerifyProofOfOwnershipMultisignatureCredentialArgs, context: VerifierAgentContext): Promise<IVerifyResult> {
         let { credential, policies, ...otherOptions } = args
         let verificationResult: IVerifyResult = { verified: false }
 
@@ -511,13 +717,15 @@ export class CredentialPlugin implements IAgentPlugin {
         return verifiablePresentation
     }
 
-
-    //ADDED NEW FUNCTION for aggregating BLS public keys to have 1 aggregate public key
-    /** {@inheritdoc @veramoNULL} */
+    /**
+     * Aggregates multiple BLS public keys into a single public key.
+     *
+     * @public
+     */
     async aggregateBlsPublicKeys(
-        args: { list_of_publicKeyHex: string[] },
+        args: IAggregateBlsPublicKeysArgs,
         context: IssuerAgentContext
-    ): Promise<{ bls_aggregated_pubkey: string }> {
+    ): Promise<IAggregateBlsPublicKeysResult> {
         if (this.blsBackend === 'noble') {
             const bls = await getNobleBls()
             const publicKeys = args.list_of_publicKeyHex.map((hex) => hexToBytes(strip0x(hex.trim())))
@@ -532,14 +740,15 @@ export class CredentialPlugin implements IAgentPlugin {
             return { bls_aggregated_pubkey: bytesToHex(aggregatedKey) }
         }
     }
-
-
-    //ADDED NEW FUNCTION for signign multi-issued credentials with BLS
-    /** {@inheritdoc @veramoNULL} */
+    /**
+     * Collects a partial BLS signature for a multi-issuer credential payload.
+     *
+     * @public
+     */
     async signMultiIssuedVerifiableCredential(
         args: ISignMultiIssuerVerifiableCredentialArgs,
         context: IssuerAgentContext,
-    ): Promise<VerifiableCredential> {
+    ): Promise<IMultisignatureSigningResult> {
         let { credential,issuer, proofFormat, keyRef, removeOriginalFields, save, now, ...otherOptions } = args
         const credentialContext = processEntryToArray(credential['@context'], MANDATORY_CREDENTIAL_CONTEXT)
         const credentialType = processEntryToArray(credential.type, 'VerifiableCredential')
@@ -563,7 +772,7 @@ export class CredentialPlugin implements IAgentPlugin {
             throw new Error(`invalid_argument: credential.issuer must be a DID managed by this agent. ${e}`)
         }
         try {
-            let signedVerifiableCredential: VerifiableCredential
+            let signingResult: IMultisignatureSigningResult
 
             if (
                 (proofFormat as ExtendedProofFormat) === 'sign-bls-multi-signature' ||
@@ -584,14 +793,13 @@ export class CredentialPlugin implements IAgentPlugin {
                     { did: identifier.did, signer, alg },
                     { ...otherOptions },
                 )
-                //debug(jwt)
-                signedVerifiableCredential = signature_data
-                return signedVerifiableCredential;
+                signingResult = signature_data
+                return signingResult;
             }
             else {
                 throw new Error('invalid_argument: proofFormat must be "sign-bls-multi-signature" or any other supported proof format')
             }
-            return signedVerifiableCredential;
+            return signingResult;
         } catch (error) {
             //debug(error)
             return Promise.reject(error)
@@ -599,10 +807,13 @@ export class CredentialPlugin implements IAgentPlugin {
     }
 
 
-    //ADDED NEW FUNCTION for signign multi-issued credentials with BLS
-    /** {@inheritdoc @veramoNULL} */
+    /**
+     * Aggregates multiple issuer signatures into a final multisignature credential.
+     *
+     * @public
+     */
     async createMultiIssuerVerifiableCredential(
-        args: ICreateVerifiableCredentialArgs,
+        args: ICreateMultiIssuerVerifiableCredentialArgs,
         context: IssuerAgentContext,
     ): Promise<VerifiableCredential> {
         let { credential,issuer, proofFormat, keyRef,signatures, removeOriginalFields, save, now, ...otherOptions } = args
@@ -614,19 +825,15 @@ export class CredentialPlugin implements IAgentPlugin {
             '@context': credentialContext,
             type: credentialType,
         }
-        //FIXME: if the identifier is not found, the error message should reflect that.
-    //issuer = extractIssuer( {credential:{issuer:issuer}} as VerifiableCredential, { removeParameters: true })
-        //console.log("issuer before issuer" +JSON.stringify(issuer,null,2))
-        issuer = issuer.id
-        //console.log("issuer after issuer" +JSON.stringify(issuer,null,2))
+        const issuerDid = typeof issuer === 'string' ? issuer : issuer?.id
 
-        if (!issuer || typeof issuer === 'undefined') {
+        if (!issuerDid || typeof issuerDid === 'undefined') {
             throw new Error('invalid_argument: credential.issuer must not be empty')
         }
 
         let identifier: IIdentifier
         try {
-            identifier = await context.agent.didManagerGet({ did: issuer })
+            identifier = await context.agent.didManagerGet({ did: issuerDid })
         } catch (e) {
             throw new Error(`invalid_argument: credential.issuer must be a DID managed by this agent. ${e}`)
         }
@@ -658,12 +865,11 @@ export class CredentialPlugin implements IAgentPlugin {
             return Promise.reject(error)
         }
     }
-
-
-
-
-    //ADDED NEW FUNCTION for Proof Of Ownership Multi-Issuer Verifiable Credential creation
-    /** {@inheritdoc @veramoNULL} */
+    /**
+     * Creates a proof-of-ownership protected multisignature credential.
+     *
+     * @public
+     */
     async createProofOfOwnershipMultiIssuerVerifiableCredential(
         args: ICreateProofOfOwnershipMultiIssuerVerifiableCredentialArgs,
         context: IssuerAgentContext,
@@ -1092,11 +1298,15 @@ export class CredentialPlugin implements IAgentPlugin {
         }
         return signingOptions
     }
-    // 4.1 Collect a single holder’s partial BLS signature (no aggregation here)
+    /**
+     * Collects a partial BLS signature for a multi-holder presentation payload.
+     *
+     * @public
+     */
     async signMultiHolderVerifiablePresentation(
-        args: ICreateVerifiablePresentationArgs & { holder: string },
+        args: ISignMultiHolderVerifiablePresentationArgs,
         context: IssuerAgentContext,
-    ): Promise<any> {
+    ): Promise<IMultisignatureSigningResult> {
         const { presentation, holder, keyRef, ...otherOptions } = args
         const presCtx = processEntryToArray(presentation['@context'], MANDATORY_CREDENTIAL_CONTEXT)
         const presType = processEntryToArray(presentation.type, 'VerifiablePresentation')
@@ -1115,9 +1325,13 @@ export class CredentialPlugin implements IAgentPlugin {
         )
     }
 
-// 4.2 Aggregate multiple partial signatures into the final VP
+    /**
+     * Aggregates holder signatures into a final multisignature presentation.
+     *
+     * @public
+     */
     async createMultiHolderVerifiablePresentation(
-        args: ICreateVerifiablePresentationArgs & { signatures: string[] },
+        args: ICreateMultiHolderVerifiablePresentationArgs,
         context: IssuerAgentContext,
     ): Promise<VerifiablePresentation> {
         const { presentation, signatures, keyRef, ...otherOptions } = args
@@ -1150,9 +1364,13 @@ export class CredentialPlugin implements IAgentPlugin {
         return normalizePresentation(vp)
     }
 
-// 4.3 Produce VP with Proof-of-Ownership + aggregated BLS signature (multi-holder)
+    /**
+     * Creates a proof-of-ownership protected multisignature presentation.
+     *
+     * @public
+     */
     async createProofOfOwnershipMultiHolderVerifiablePresentation(
-        args: any & { signatures: string[]; proofsOfOwnership: string[] },
+        args: ICreateProofOfOwnershipMultiHolderVerifiablePresentationArgs,
         context: IssuerAgentContext,
     ): Promise<VerifiablePresentation> {
         const { presentation, signatures, proofsOfOwnership } = args
@@ -1170,9 +1388,13 @@ export class CredentialPlugin implements IAgentPlugin {
         return vp;
     }
 
-// 4.4 Verify aggregated BLS on multi-holder VP
+    /**
+     * Verifies a multisignature presentation.
+     *
+     * @public
+     */
     async verifyMultisignaturePresentation(
-        args: { presentation: MultiIssuerVerifiablePresentation } & Record<string, any>,
+        args: IVerifyMultisignaturePresentationArgs,
         context: VerifierAgentContext,
     ): Promise<IVerifyResult> {
         const { presentation, ...otherOptions } = args
@@ -1184,9 +1406,13 @@ export class CredentialPlugin implements IAgentPlugin {
         )
     }
 
-// 4.5 Verify PoO + aggregated BLS on multi-holder VP
+    /**
+     * Verifies a proof-of-ownership protected multisignature presentation.
+     *
+     * @public
+     */
     async verifyProofOfOwnershipMultisignaturePresentation(
-        args: { presentation: ProofOfOwnershipMultiIssuerVerifiablePresentation } & Record<string, any>,
+        args: IVerifyProofOfOwnershipMultisignaturePresentationArgs,
         context: VerifierAgentContext,
     ): Promise<IVerifyResult> {
         const { presentation, ...otherOptions } = args

@@ -1,47 +1,36 @@
 {
-  "name": "@veramo/did-manager",
-  "description": "Veramo DID manager plugin",
-  "version": "6.0.0",
+  "name": "@veramo-community/did-manager-bls",
+  "description": "Veramo DID manager extensions for BLS-oriented identifier workflows.",
+  "version": "0.1.0",
   "main": "build/index.js",
   "exports": "./build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "extract-api": "node ../cli/bin/veramo.js dev extract-api"
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build"
   },
   "dependencies": {
-    "@veramo/core-types": "workspace:^",
-    "@veramo/did-discovery": "workspace:^"
+    "@veramo/core-types": "^6.0.0",
+    "@veramo/did-discovery": "^6.0.0"
   },
   "devDependencies": {
     "typescript": "5.7.3"
   },
   "files": [
     "build/**/*",
-    "src/**/*",
     "README.md",
     "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/decentralized-identity/veramo.git",
-    "directory": "packages/did-manager"
-  },
-  "author": "Consensys Mesh R&D <hello@veramo.io>",
-  "contributors": [
-    "Simonas Karuzas <simonas.karuzas@mesh.xyz>",
-    "Mircea Nistor <mircea.nistor@mesh.xyz>"
-  ],
   "keywords": [
     "Veramo",
     "DID",
     "Verifiable Credential",
     "veramo-plugin",
     "DID Manager",
-    "aggregator"
+    "BLS"
   ],
   "license": "Apache-2.0",
   "type": "module",

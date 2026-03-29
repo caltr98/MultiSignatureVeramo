@@ -1,6 +1,5 @@
-# Veramo W3C credentials plugin 
+# @veramo-community/credential-w3c-bls-multisig
 
-Veramo package for working with W3C Verifiable Credentials & Presentations.
+Veramo credential plugin extensions for BLS signatures and multisignature VC and VP flows.
 
-This package contains a plugin and a message handler for issuing and verifying Credentials
-and Presentations that adhere to W3C standards.
+This package exports the multisignature-aware `CredentialPlugin` and the `W3cMessageHandler`.

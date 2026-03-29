@@ -1,4 +1,5 @@
-# Veramo did:ethr provider
+# @veramo-community/did-provider-ethr-bls
 
-This package contains an implementation of `AbstractIdentifierProvider` for the `did:ethr` method.
-This enables creation and control of `did:ethr` entities.
+Veramo `did:ethr` provider extensions for publishing and managing BLS-related verification material.
+
+This package exports `BlsEthrDIDProvider` and `KmsEthereumSigner`.

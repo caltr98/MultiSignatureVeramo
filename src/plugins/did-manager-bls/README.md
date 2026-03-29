@@ -1,5 +1,5 @@
-# Veramo DID Manager
+# @veramo-community/did-manager-bls
 
-The DID controller abstraction plugin for Veramo.
+Veramo DID manager extensions for BLS-oriented identifier workflows.
 
-This plugin combines multiple DID method controllers and provides the abstracted functionality to other plugins.
+This package exports `DIDManagerBls` and the supporting identifier store and provider abstractions used by the demo stack.
