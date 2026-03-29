@@ -1,4 +1,7 @@
 ## Veramo Extended for Multisignature
+Plugin Additions to standard Veramo
+![VeramoExtensions! drawio_page-0001](https://github.com/user-attachments/assets/76f5822b-ce96-4497-9af9-12e322cb75bd)
+
 
 ## Experimental results (CSV) + notebook
 
