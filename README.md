@@ -11,6 +11,7 @@
 [![Venue](https://img.shields.io/badge/SAC-'26-orange)](https://doi.org/10.1145/3748522.3779844)
 [![Built with Veramo](https://img.shields.io/badge/built%20with-Veramo-5a45ff)](https://veramo.io)
 [![BLS backends](https://img.shields.io/badge/BLS-ChainSafe%20%7C%20noble--curves-2ea44f)](#-bls-backend-selection)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)
 
 <img src="https://github.com/user-attachments/assets/76f5822b-ce96-4497-9af9-12e322cb75bd" alt="Veramo multisignature plugin architecture" width="85%">
@@ -324,4 +325,4 @@ If you use this work, please cite:
 
 ## 📄 License
 
-This repository does not currently declare a license. If you'd like others to reuse the code, add a `LICENSE` file (for example **MIT** or **Apache-2.0**) and update this section.
+Released under the **MIT License** — see [`LICENSE`](LICENSE) for details.
