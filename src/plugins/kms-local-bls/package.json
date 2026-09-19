@@ -13,11 +13,12 @@
     "@chainsafe/bls": "^8.1.0",
     "@noble/curves": "^1.4.2",
     "@stablelib/nacl": "^1.0.4",
-    "@veramo/core-types": "^6.0.0",
-    "@veramo/key-manager": "^6.0.0",
-    "@veramo/utils": "^6.0.0",
+    "@veramo/core-types": "^7.0.1",
+    "@veramo/key-manager": "^7.0.1",
+    "@veramo/utils": "^7.0.1",
     "did-jwt": "^8.0.0",
-    "ethers": "^6.11.1"
+    "ethers": "^6.11.1",
+    "@veramo/kms-local": "^7.0.1"
   },
   "devDependencies": {
     "@types/debug": "4.1.8",

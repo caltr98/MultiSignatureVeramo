@@ -1,7 +1,7 @@
 // veramo-simple-server.ts
 // Compile then run:
-//   yarn tsc -p tsconfig.json
-//   node src/server-demo/veramo-server.js
+//   corepack yarn build
+//   node --env-file=.env dist/src/server-demo/veramo-server.js
 
 import express, { Request, Response } from 'express'
 import cors from 'cors'

@@ -7,3 +7,5 @@
  */
 export { BlsKeyManagementSystem } from './key-management-system-bls.js'
 export { SecretBox } from './secret-box.js'
+export { BlsCrypto, blsBytes, resolveBlsBackend } from './bls.js'
+export type { BlsBackend } from './bls.js'

@@ -1,8 +1,8 @@
 // Simple client that drives the PoO+BLS multi-holder flow against `veramo-server.ts`.
 //
 // Compile then run in a second terminal (with server already running):
-//   yarn tsc -p tsconfig.json
-//   node src/server-demo/client.js
+//   corepack yarn build
+//   node --env-file=.env dist/src/server-demo/client.js
 
 type SetupResponse = {
   ok: boolean

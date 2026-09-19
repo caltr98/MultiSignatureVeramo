@@ -13,7 +13,7 @@ set -euo pipefail
 # Defaults:
 # - CLAIMS_LIST="16 128"
 # - SIZE=64
-# - RUNS=30 (multisig + no-multisig)
+# - RUNS=1000 (multisig + no-multisig)
 # - EIP712_RUNS=30 (EIP712 benchmark, no sample VC printing)
 # - RESUME=0 (set RESUME=1 to skip issuer rows already present in the output CSVs)
 # - PRUNE=0 (set PRUNE=1 to delete existing rows for the issuer before re-running)
@@ -123,7 +123,7 @@ maybe_run() {
 }
 
 if [[ "$SKIP_BUILD" != "1" ]]; then
-  run_cmd yarn tsc -p tsconfig.json
+  run_cmd corepack yarn build
 fi
 
 for (( issuers=start_issuers; issuers<=end_issuers; issuers*=2 ))
@@ -139,31 +139,31 @@ do
     if [[ "$RUN_MULTISIG" == "1" ]]; then
       echo "  multisig (sizes)"
       maybe_run "./experimental_results/message_sizes_claims${claims}_size${SIZE}.csv" "$issuers" "multisig sizes" \
-        node ./src/test/full_sizes_test_main.js --claims "$claims" --size "$SIZE" --issuers "$issuers"
+        node ./dist/src/test/full_sizes_test_main.js --claims "$claims" --size "$SIZE" --issuers "$issuers"
 
       echo "  multisig (benchmark)"
       maybe_run "./experimental_results/benchmark_results_claims${claims}_size${SIZE}.csv" "$issuers" "multisig benchmark" \
-        node ./src/test/full_test_main.js --claims "$claims" --size "$SIZE" --issuers "$issuers" --runs "$RUNS"
+        node ./dist/src/test/full_test_main.js --claims "$claims" --size "$SIZE" --issuers "$issuers" --runs "$RUNS"
     fi
 
     if [[ "$RUN_STANDARD" == "1" ]]; then
       echo "  no-multisig (sizes)"
       maybe_run "./experimental_results/message_sizes_standard_claims${claims}_size${SIZE}.csv" "$issuers" "no-multisig sizes" \
-        node ./src/test_no_multisign/full_sizes_standard_test_main.js --claims "$claims" --size "$SIZE" --issuers "$issuers"
+        node ./dist/src/test_no_multisign/full_sizes_standard_test_main.js --claims "$claims" --size "$SIZE" --issuers "$issuers"
 
       echo "  no-multisig (benchmark)"
       maybe_run "./experimental_results/benchmark_standard_claims${claims}_size${SIZE}.csv" "$issuers" "no-multisig benchmark" \
-        node ./src/test_no_multisign/full_test_standard_veramo.js --claims "$claims" --size "$SIZE" --issuers "$issuers" --runs "$RUNS"
+        node ./dist/src/test_no_multisign/full_test_standard_veramo.js --claims "$claims" --size "$SIZE" --issuers "$issuers" --runs "$RUNS"
     fi
 
     if [[ "$RUN_EIP712" == "1" ]]; then
       echo "  no-multisig EIP712 (benchmark)"
       maybe_run "./experimental_results/benchmark_standard_eip712_claims${claims}_size${SIZE}.csv" "$issuers" "no-multisig EIP712 benchmark" \
-        node ./src/test_no_multisign_eip712/full_test_standard_veramo_eip712.js --claims "$claims" --size "$SIZE" --issuers "$issuers" --runs "$EIP712_RUNS" --printSample 0 --logRuns 0
+        node ./dist/src/test_no_multisign_eip712/full_test_standard_veramo_eip712.js --claims "$claims" --size "$SIZE" --issuers "$issuers" --runs "$EIP712_RUNS" --printSample 0 --logRuns 0
 
       echo "  no-multisig EIP712 (sizes)"
       maybe_run "./experimental_results/message_sizes_standard_eip712_claims${claims}_size${SIZE}.csv" "$issuers" "no-multisig EIP712 sizes" \
-        node ./src/test_no_multisign_eip712/full_sizes_standard_test_main_eip712.js --claims "$claims" --size "$SIZE" --issuers "$issuers"
+        node ./dist/src/test_no_multisign_eip712/full_sizes_standard_test_main_eip712.js --claims "$claims" --size "$SIZE" --issuers "$issuers"
     fi
 
   done

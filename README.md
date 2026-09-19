@@ -61,27 +61,36 @@ Rogue-key attacks are kept out of the orchestra via a **Proof-of-Possession (PoP
 
 ## 🚀 Quick Start
 
-> **Prerequisites:** Node.js + Yarn (or npm), and an Ethereum RPC endpoint for `did:ethr` resolution (Sepolia or a local node). Configure the resolver in `src/veramo/setup.ts`.
+> **Prerequisites:** Node.js 22 or newer and Corepack with Yarn 1.22.22. The offline tests require no blockchain connection. The network demos also need an Ethereum RPC endpoint and the environment settings below.
+
+This workspace targets **Veramo 7.0.1**, the latest stable release checked for this update. It follows Veramo 7's credential-provider API.
 
 ```bash
 # 1. Install dependencies
-yarn install            # or: npm install
+corepack yarn install --frozen-lockfile
 
-# 2. Compile TypeScript → JS
-yarn tsc -p tsconfig.json
+# 2. Build the four plugin packages and the demos
+corepack yarn build
 
-# 3. Run any script
-node ./src/<script>.js
+# 3. Exercise the agent APIs with in-memory DIDs and real signatures
+corepack yarn test
 ```
 
-**Fastest way to see it work** — the printable VC/VP smoke test:
+Build output lives in `dist/` for the demos and `src/plugins/*/build/` for the packages. The workspace links local packages automatically; building them first makes their public exports available.
+
+For network demos, copy [`.env.example`](.env.example) to `.env`, set `SEPOLIA_RPC_URL` and `VERAMO_DID_REGISTRY`, and fill in `VERAMO_KMS_SECRET_KEY`. Generate that 32-byte storage-encryption key with:
 
 ```bash
-VERAMO_BLS_BACKEND=chainsafe node src/test/print_vc_vp_smoke.js
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 ```
 
-This prints — and attempts to verify — a VC and a VP, both carrying a Proof-of-Ownership.
-*Verification resolves `did:ethr` and needs an RPC endpoint (default resolver: `http://127.0.0.1:8545`).*
+Keep the same key when reopening an existing SQLite store. The demos read environment variables; `--env-file=.env` loads the file when starting Node. To print a VC and VP carrying Proof-of-Ownership:
+
+```bash
+node --env-file=.env dist/src/test/print_vc_vp_smoke.js
+```
+
+Verification resolves `did:ethr` through the configured RPC endpoint. The default URL is `http://127.0.0.1:8545`; a local node needs the matching DID registry deployment.
 
 ---
 
@@ -125,10 +134,27 @@ Plugin additions on top of standard Veramo:
 
 | Module | What it does |
 | --- | --- |
-| `plugins/veramo-plugin-multisig` | Core extension to the Veramo agent plugin for **creating and verifying multisignature credentials**. |
-| `bls.extend-credential-w3c.ts` | Modified W3C credential plugin adding **multisignature support via BLS**. |
-| `did-provider.ts` | Modified DID provider with **BLS key support** — publishes BLS public keys on the DID Document. |
-| `kms-local-bls` | Extension of `kms-local` enabling **BLS keys for encryption/decryption**, giving agents those cryptographic capabilities. |
+| `src/plugins/bls-extend-credential-w3c` | Credential plugin and Veramo 7 BLS provider; partial signing, aggregation, and verification for VC/VP flows. |
+| `src/plugins/did-manager-bls` | DID manager with the existing BLS key-management options. |
+| `src/plugins/did-provider-BLS-Ethr` | Ethereum DID provider that can publish BLS verification keys. |
+| `src/plugins/kms-local-bls` | BLS key generation, signing, aggregation, and shared verification; other key types use Veramo's local KMS. |
+
+The custom `CredentialPlugin` keeps the existing multisignature agent methods and includes BLS and JWT providers. Additional formats are registered as Veramo 7 providers:
+
+```typescript
+import { CredentialPlugin } from '@veramo-community/credential-w3c-bls-multisig'
+import { CredentialProviderEIP712 } from '@veramo/credential-eip712'
+
+const credentials = new CredentialPlugin({
+  blsBackend: 'chainsafe',
+  providers: [new CredentialProviderEIP712()],
+})
+// Add credentials to createAgent({ plugins: [...] }).
+```
+
+Single BLS signatures use `proofFormat: 'bls'` with the standard `createVerifiableCredential`, `verifyCredential`, `createVerifiablePresentation`, and `verifyPresentation` methods. For aggregate documents, continue using `verifyMultisignatureCredential` / `verifyMultisignaturePresentation`, or the corresponding `verifyProofOfOwnershipMultisignature*` methods. Those methods check the custom BLS payload and signer roster; application trust, credential-status, and time policies remain the caller's responsibility.
+
+`CredentialProviderBls` is also exported for applications that only need single BLS signatures inside the official `@veramo/credential-w3c` plugin. See the [credential package README](src/plugins/bls-extend-credential-w3c/README.md) for the migration details.
 
 ---
 
@@ -150,27 +176,35 @@ VERAMO_BLS_BACKEND=noble     node ...
 
 ## 🧪 Testing
 
+### Offline regression suite
+
+```bash
+corepack yarn build
+corepack yarn test
+```
+
+The suite exercises both BLS backends, JWT and EIP-712 providers, the packaged exports, schema validation, VC/VP aggregation, ownership proofs, challenge/domain binding, and rejection of altered payloads and malformed proofs. It uses real keys and signatures with in-memory DID documents.
+
 ### 🛡️ Rogue-key attack simulation
 
 A runnable simulation that verifies PoO/PoP binding is enforced for BLS aggregates.
 
 ```bash
 # compile first
-yarn tsc -p tsconfig.json
-VERAMO_BLS_BACKEND=chainsafe node validation/rogue-key-attacks/rka_rogue_key_attack.js   # or: noble
+corepack yarn build
+node --env-file=.env dist/validation/rogue-key-attacks/rka_rogue_key_attack.js
 ```
 
 - ✅ **Baseline (honest)** — aggregates honest BLS keys, attaches fresh PoOs → expected `verified: true` *(requires DID resolution via the configured Sepolia RPC)*.
 - ❌ **Rogue attempt** — attacker forges a rogue BLS key (algebraically cancelling the honest PK), signs once, and reuses a **stale** PoO → expected `verified: false` if PoO binding works.
 
-> Seeing RPC/DNS errors (e.g. `eth-sepolia.g.alchemy.com`)? Point `src/veramo/setup.ts` at a reachable resolver endpoint.
+> RPC/DNS failures require a reachable `SEPOLIA_RPC_URL` and a matching `VERAMO_DID_REGISTRY` in your environment.
 
 ### 🖨️ Printable VC/VP smoke test
 
 ```bash
-yarn install
-yarn tsc -p tsconfig.json
-VERAMO_BLS_BACKEND=chainsafe node src/test/print_vc_vp_smoke.js   # or: noble
+corepack yarn build
+node --env-file=.env dist/src/test/print_vc_vp_smoke.js
 ```
 
 Prints and attempts to verify a VC and a VP, each with a Proof-of-Ownership. *(Default resolver: `http://127.0.0.1:8545`.)*
@@ -180,16 +214,15 @@ Prints and attempts to verify a VC and a VP, each with a Proof-of-Ownership. *(D
 
 <br>
 
-Run after compiling (`yarn tsc -p tsconfig.json`):
+Run after `corepack yarn build`, using the corresponding path under `dist/`:
 
 | Script | Purpose |
 | --- | --- |
-| `Concerto-BLS` | BLS sample following the leader model: a leader aggregates signatures and BLS public keys and writes them onto a VC. |
-| `create_key_key.ts` | Creates a BLS key + BLS key pair and stores the private key. **Run this before** the DID-creation script below. |
-| `create-did-with-bls-key.ts` | Creates a DID with a BLS key and publishes it on the DID Document on Sepolia. |
-| `create-vc-then-verify.ts` | Creates a VC with a BLS signature, recovers the public key from Sepolia, and verifies it. |
-| `multisig-vc-creation.ts` | Creates a **multisig** VC, recovers public keys from Sepolia, and verifies the **aggregated** BLS signature. |
-| `signature-with-bls.ts` | Signs a simple message with a BLS key. |
+| `src/test/print_vc_vp_smoke.ts` | Prints and verifies a multi-issuer VC and a multi-holder VP. |
+| `src/test/full_test_main.ts` | Runs the multisignature benchmark. |
+| `src/test_no_multisign/full_test_standard_veramo.ts` | Runs the standard credential benchmark. |
+| `src/test_no_multisign_eip712/full_test_standard_veramo_eip712.ts` | Runs the EIP-712 baseline. |
+| `validation/rogue-key-attacks/rka_rogue_key_attack.ts` | Exercises the honest and rogue-key cases. |
 
 </details>
 
@@ -204,14 +237,14 @@ A small Express server + client that exercises the PoO + BLS multi-holder VP flo
 - **More docs:** `src/server-demo/README.md`
 
 ```bash
-yarn install
-yarn tsc -p tsconfig.json
+corepack yarn install --frozen-lockfile
+corepack yarn build
 
 # Terminal 1 — server
-VERAMO_BLS_BACKEND=chainsafe node src/server-demo/veramo-server.js
+node --env-file=.env dist/src/server-demo/veramo-server.js
 
 # Terminal 2 — client
-VERAMO_BLS_BACKEND=chainsafe node src/server-demo/client.js
+node --env-file=.env dist/src/server-demo/client.js
 ```
 
 <details>
@@ -238,7 +271,7 @@ The repo ships a convenience script, `benchmark.sh`, that automates performance 
 ./benchmark.sh <start_issuers> <end_issuers>
 ```
 
-It compiles the TypeScript sources (unless `SKIP_BUILD=1`), then loops over issuer counts **doubling** from `start_issuers` up to `end_issuers` (capped by `MAX_ISSUERS`). For each issuer count and claim size in `CLAIMS_LIST`, it records message sizes and benchmark timings for each enabled mode, writing CSVs to `experimental_results/`.
+Export the demo environment variables before running this Bash script; it does not load `.env` itself. It builds the workspace (unless `SKIP_BUILD=1`) and loops over issuer counts **doubling** from `start_issuers` up to `end_issuers` (capped by `MAX_ISSUERS`). For each issuer count and claim size in `CLAIMS_LIST`, it records message sizes and benchmark timings for each enabled mode, writing CSVs to `experimental_results/`.
 
 ```bash
 # Example: 2 → 32 issuers, larger messages, multisig only
@@ -262,7 +295,7 @@ CLAIMS_LIST="16 32" SIZE=1024 RUN_STANDARD=0 RUN_EIP712=0 ./benchmark.sh 2 32
 | `RUN_EIP712` | `1` | Set `0` to skip EIP-712 baseline benchmarks. |
 | `RESUME` | `0` | If `1`, skip issuer counts already present in the output CSVs. |
 | `PRUNE` | `0` | If `1`, delete existing rows for an issuer before running. |
-| `SKIP_BUILD` | `0` | Set `1` to skip the initial `yarn tsc` step. |
+| `SKIP_BUILD` | `0` | Set `1` to skip the initial workspace build. |
 | `DEBUG` | `0` | Set `1` for shell tracing. |
 | `DRY_RUN` | `0` | Set `1` to print commands without executing. |
 
@@ -272,12 +305,11 @@ CLAIMS_LIST="16 32" SIZE=1024 RUN_STANDARD=0 RUN_EIP712=0 ./benchmark.sh 2 32
 
 ```bash
 # Benchmark
-yarn tsc -p tsconfig.json && \
-  node src/test_no_multisign_eip712/full_test_standard_veramo_eip712.js --claims 32 --size 1024 --issuers 8 --runs 5
+corepack yarn build
+node --env-file=.env dist/src/test_no_multisign_eip712/full_test_standard_veramo_eip712.js --claims 32 --size 1024 --issuers 8 --runs 5
 
 # Message sizes
-yarn tsc -p tsconfig.json && \
-  node src/test_no_multisign_eip712/full_sizes_standard_test_main_eip712.js --claims 32 --size 1024 --issuers 8
+node --env-file=.env dist/src/test_no_multisign_eip712/full_sizes_standard_test_main_eip712.js --claims 32 --size 1024 --issuers 8
 ```
 
 - `VERAMO_DB_EIP712=database_eip712.sqlite` — optional DB filename override (default `database_eip712.sqlite`).

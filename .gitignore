@@ -1,2 +1,15 @@
 node_modules
 database.sqlite
+dist/
+src/plugins/*/build/
+*.sqlite
+*.sqlite-*
+*.tgz
+*:Zone.Identifier
+.env
+.env.*
+!.env.example
+src/**/*.js
+validation/**/*.js
+.pnp.*
+.yarnrc.yml

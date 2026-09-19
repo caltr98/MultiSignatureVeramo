@@ -1,629 +1,142 @@
-//NEW ALL: LOGIC FOR BLS SIGNATURE ISSUING AND VERIFICATION
+import type {
+  DIDResolutionOptions,
+  VerifiableCredential,
+  VerifierAgentContext,
+} from '@veramo/core-types'
+import type { BlsBackend } from '@veramo-community/kms-local-bls'
+import type {
+  MultiIssuerVerifiableCredential,
+  ProofOfOwnershipMultiIssuerVerifiableCredential,
+} from './action-handler.js'
+import {
+  credentialPayload,
+  signPayload,
+  type BlsPayload,
+  type BlsSigner,
+} from './bls-payload.js'
+import { aggregateDocument, aggregateOwnership } from './bls-aggregation.js'
+import { verifyBlsDocument } from './bls-verification.js'
 
-import { DIDResolutionOptions, VerifiableCredential, IVerifyResult, VerifierAgentContext } from '@veramo/core-types'
-import canonicalizeLib from 'canonicalize'
-import { bytesToHex, hexToBytes } from '@veramo/utils'
-import { MultiIssuerVerifiableCredential, ProofOfOwnershipMultiIssuerVerifiableCredential } from './action-handler.js'
-
-import { ethers } from 'ethers'
-/**
- * Verify a BLS-MultiSignature Verifiable Credential then verify the proof of ownerships
- */
-import {performance} from "node:perf_hooks";
-
-const canonicalize = canonicalizeLib as unknown as (input: unknown) => string | undefined
-
-type BlsBackend = 'chainsafe' | 'noble'
-
-function resolveBlsBackend(value: unknown): BlsBackend {
-    return value === 'noble' ? 'noble' : 'chainsafe'
+type SignSettings = {
+  resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string }
+  fetchRemoteContexts?: boolean
 }
 
-function readEnv(name: string): string | undefined {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const p: any = typeof process !== 'undefined' ? process : undefined
-    return p?.env?.[name]
+export async function createVerifiableCredentialBls(
+  credential: BlsPayload,
+  options: BlsSigner,
+  _settings?: SignSettings,
+): Promise<any> {
+  const payload = credentialPayload(credential, false)
+  const { signatureData } = await signPayload(payload, options)
+  return {
+    ...payload,
+    proof: {
+      type: 'BlsSignaturePisa',
+      created: new Date().toISOString(),
+      proofPurpose: 'assertionMethod',
+      verificationMethod: `${options.did}#delegate-1`,
+      signatureValue: signatureData.signatureHex,
+    },
+  }
 }
 
-function strip0x(hex: string): string {
-    return hex.startsWith('0x') ? hex.slice(2) : hex
+export async function signMultiSignatureVerifiableCredentialBls(
+  credential: BlsPayload,
+  options: BlsSigner,
+  _settings?: SignSettings,
+) {
+  return signPayload(credentialPayload(credential, true), options)
 }
 
-let chainsafeBlsPromise: Promise<any> | undefined
-async function getChainsafeBls(): Promise<any> {
-    if (!chainsafeBlsPromise) {
-        chainsafeBlsPromise = import('@chainsafe/bls').then((m: any) => m?.default ?? m)
-    }
-    return chainsafeBlsPromise
+export async function aggregateMultiSignatureVerifiableCredentialBls(
+  credential: BlsPayload,
+  options: BlsSigner,
+  signatures: string[],
+  _settings?: SignSettings,
+): Promise<any> {
+  return aggregateDocument(
+    credential,
+    credential.multi_issuers,
+    signatures,
+    options,
+  )
 }
 
-let nobleBlsPromise: Promise<any> | undefined
-async function getNobleBls(): Promise<any> {
-    if (!nobleBlsPromise) {
-        nobleBlsPromise = import('@noble/curves/bls12-381').then((m: any) => m.bls12_381)
-    }
-    return nobleBlsPromise
+export async function generateProofOfOwnershipMultiIssuerVerifiableCredentialBls(
+  credential: BlsPayload,
+  ownership: string[],
+  signatures: string[],
+  _settings?: string[],
+  backend?: BlsBackend,
+): Promise<any> {
+  return aggregateOwnership(
+    credential,
+    credential.multi_issuers,
+    signatures,
+    ownership,
+    backend,
+  )
+}
+
+export async function verifyCredentialBls(
+  credential: VerifiableCredential,
+  context: VerifierAgentContext,
+  resolutionOptions?: DIDResolutionOptions,
+  backend?: BlsBackend,
+) {
+  const signer =
+    typeof credential.issuer === 'string'
+      ? credential.issuer
+      : credential.issuer?.id
+  return verifyBlsDocument(
+    {
+      document: credential,
+      payload: credentialPayload(credential, false),
+      signers: [signer],
+      mode: 'single',
+    },
+    context,
+    resolutionOptions,
+    backend,
+  )
+}
+
+export async function verifyCredentialMultiSignatureBls(
+  credential: MultiIssuerVerifiableCredential,
+  context: VerifierAgentContext,
+  resolutionOptions?: DIDResolutionOptions,
+  backend?: BlsBackend,
+) {
+  return verifyBlsDocument(
+    {
+      document: credential,
+      payload: credentialPayload(credential, true),
+      signers: credential.multi_issuers,
+      mode: 'multi',
+    },
+    context,
+    resolutionOptions,
+    backend,
+  )
 }
 
 export async function verifyCredentialProofOfOwnershipMultiSignatureBls(
-    credential: ProofOfOwnershipMultiIssuerVerifiableCredential,
-    context: VerifierAgentContext,
-    resolutionOptions?: DIDResolutionOptions,
-    blsBackend?: BlsBackend,
-): Promise<IVerifyResult & { timings?: Record<string, number> }> {
-
-    const timings: Record<string, number> = {};
-    const proof = credential.proof;
-
-    if (!proof || !proof.type || !proof.signatureValue || !proof.ProofsOfOwnership) {
-        return {
-            verified: false,
-            error: {
-                message: 'Missing or malformed proof object',
-                errorCode: 'invalid_proof',
-            },
-            timings,
-        };
-    }
-
-    if (!Array.isArray(proof.verificationMethod)) {
-        throw new Error('Single Signature Verification method is verifySignatureBls');
-    }
-
-    try {
-        const t0 = performance.now();
-        const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
-
-        const payloadToVerify = {
-            '@context': credential['@context'],
-            multi_issuers: credential.multi_issuers,
-            credentialSubject: credential.credentialSubject,
-            type: credential.type,
-            aggregated_bls_public_key: credential.aggregated_bls_public_key,
-        };
-
-        const payload = canonicalize(payloadToVerify);
-        if (!payload) throw new Error('Failed to canonicalize VC');
-        const message = Uint8Array.from(Buffer.from(payload, 'utf-8'));
-
-        // --- BLS Signature Verification ---
-        const t1 = performance.now();
-        if (proof.type !== 'ProofOfOwnershipBlsMultiSignaturePisa') {
-            return {
-                verified: false,
-                error: {
-                    message: `Invalid proof.type. Expected 'ProofOfOwnershipBlsMultiSignaturePisa' but got '${proof.type}'`,
-                    errorCode: 'invalid_proof',
-                },
-                timings,
-            }
-        }
-
-        const signatureBytes = hexToBytes(strip0x(proof.signatureValue))
-        const firstVerify =
-            backend === 'noble'
-                ? await (await getNobleBls()).verify(signatureBytes, message, hexToBytes(strip0x(credential.aggregated_bls_public_key)))
-                : await (await getChainsafeBls()).verify(
-                      (await getChainsafeBls()).PublicKey.fromHex(strip0x(credential.aggregated_bls_public_key)),
-                      message,
-                      signatureBytes,
-                  )
-        const t2 = performance.now();
-        timings["BLS Signature Verification"] = t2 - t1;
-
-        if (!firstVerify) {
-            return {
-                verified: false,
-                error: {
-                    message: `Aggregate BLS verification of signature returned false`,
-                    errorCode: 'invalid_signature',
-                },
-                timings,
-            };
-        }
-
-        // --- DID Document Resolution ---
-        const t3 = performance.now();
-        const resolvedVMs = await Promise.all(
-            proof.verificationMethod.map(async (method: string) => {
-                const doc = await context.agent.resolveDid({
-                    didUrl: method,
-                    options: resolutionOptions,
-                });
-
-                const vm = doc?.didDocument?.verificationMethod?.find((v) =>
-                    v.type === 'EcdsaSecp256k1RecoveryMethod2020' ? v : null
-                );
-
-                if (!vm) {
-                    throw new Error(`Verification method ${method} not found in DID document`);
-                }
-
-                if (vm.type !== 'EcdsaSecp256k1RecoveryMethod2020') {
-                    throw new Error(
-                        `Invalid verification method type for ${method}: expected 'EcdsaSecp256k1RecoveryMethod2020' but got '${vm.type}'`
-                    );
-                }
-
-                return vm;
-            })
-        );
-        const t4 = performance.now();
-        timings["DID DocumentS Resolution"] = t4 - t3;
-
-        // --- Proof of Ownership Verification ---
-        const t5 = performance.now();
-        const signatures = proof.ProofsOfOwnership;
-
-        if (signatures.length !== credential.multi_issuers.length) {
-            throw new Error('Signatures and multi_issuers arrays length mismatch');
-        }
-
-        for (let i = 0; i < credential.multi_issuers.length; i++) {
-            const issuerDid = credential.multi_issuers[i];
-            const expectedAddress = issuerDid.split(':').pop()?.toLowerCase();
-            const signature = signatures[i];
-
-            const recoveredAddress = ethers.verifyMessage(JSON.stringify(payload), signature).toLowerCase();
-
-            if (recoveredAddress !== expectedAddress) {
-                console.log("error is here: " + issuerDid + " recovered: " + recoveredAddress + " - expected: " + expectedAddress);
-                return {
-                    verified: false,
-                    error: {
-                        message: `Address mismatch for issuer ${issuerDid}`,
-                        errorCode: 'invalid_signature',
-                    },
-                    timings,
-                };
-            }
-        }
-
-        const t6 = performance.now();
-        timings["Proofs of Ownership Verification"] = t6 - t5;
-
-        return {
-            verified: true,
-            timings,
-        };
-
-    } catch (e: any) {
-        return {
-            verified: false,
-            error: {
-                message: e.message,
-                errorCode: e.code || 'verification_error',
-            },
-            timings,
-        };
-    }
-}
-
-// NEW: aggregate OF MULTI-SIGNATURE to make Multi Signature Verifiable Credential
-export async function aggregateMultiSignatureVerifiableCredentialBls(
-    credential: any,
-    options: {
-        alg: string
-        did: string
-        signer: (data: Uint8Array) => Promise<string>
-    },list_of_signatures: string[],
-    settings?: {
-        resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string }
-        fetchRemoteContexts?: boolean
-    }
-):Promise<any> {
-    const payloadToSign = canonicalize({
-        '@context': credential['@context'],
-        type: credential['type'],
-        multi_issuers: credential['multi_issuers'],
-        credentialSubject: credential['credentialSubject'],
-    })
-
-
-    if (!payloadToSign) {
-        throw new Error('Failed to canonicalize credential payload')
-    }
-
-    if (!Array.isArray(list_of_signatures)) {
-        throw new Error('Missing list_of_signatures for BLS aggregation')
-    }
-
-    //encode the signatures
-    const encoded = new TextEncoder().encode(
-        JSON.stringify({ signatures: list_of_signatures })
-    )
-
-    const signaturesAggregatedHex = await options.signer(encoded)
-
-    const proof = {
-        type: 'BlsMultiSignaturePisa',
-        created: new Date().toISOString(),
-        proofPurpose: 'assertionMethod',
-        verificationMethod: credential['multi_issuers'],
-        signatureValue: signaturesAggregatedHex,
-    }
-
-    return {
-        ...credential,
-        proof
-    }
-}
-
-
-
-// NEW: aggregate OF MULTI-SIGNATURE to make Multi Signature Verifiable Credential
-export async function generateProofOfOwnershipMultiIssuerVerifiableCredentialBls(
-    credential: any, proofs_of_ownership:any,list_of_signatures: string[],
-    settings?: string[],
-    blsBackend?: BlsBackend,
-):Promise<any> {
-
-
-    //console.log("before canocalize"+JSON.stringify(credential,null,2))
-    const payLoad = canonicalize(credential)
-    if (!payLoad) {
-        throw new Error('Failed to canonicalize credential payload')
-    }
-
-    //console.log("after canocalize"+payLoad)
-
-    if (!Array.isArray(list_of_signatures)) {
-        throw new Error('Missing list_of_signatures for BLS aggregation')
-    }
-
-
-
-    const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
-    let aggregatedSignature: string
-    if (backend === 'noble') {
-        const bls = await getNobleBls()
-        aggregatedSignature = bytesToHex(bls.aggregateSignatures(list_of_signatures.map((h) => hexToBytes(strip0x(h)))))
-    } else {
-        const bls = await getChainsafeBls()
-        aggregatedSignature = bytesToHex(
-            bls.aggregateSignatures(list_of_signatures.map((h) => bls.Signature.fromHex(strip0x(h)))),
-        )
-    }
-
-
-
-
-    const proof = {
-        type: 'ProofOfOwnershipBlsMultiSignaturePisa',
-        proofPurpose: 'assertionMethod',
-        verificationMethod: credential['multi_issuers'],
-        ProofsOfOwnership: proofs_of_ownership,
-        signatureValue: aggregatedSignature,
-    }
-
-    let issuanceDate = new Date().toISOString()
-    return {
-        ...credential, issuanceDate,
-        proof
-    }
-}
-
-// NEW: SIGNING OF MULTI-SIGNATURE CREDENTIALS
-export async function signMultiSignatureVerifiableCredentialBls(
-    credential: any,
-    options: {
-        alg: string
-        did: string
-        signer: (data: Uint8Array) => Promise<string>
+  credential: ProofOfOwnershipMultiIssuerVerifiableCredential,
+  context: VerifierAgentContext,
+  resolutionOptions?: DIDResolutionOptions,
+  backend?: BlsBackend,
+) {
+  return verifyBlsDocument(
+    {
+      document: credential,
+      payload: credentialPayload(credential, true),
+      signers: credential.multi_issuers,
+      mode: 'ownership',
+      ownershipStringify: true,
     },
-    settings?: {
-        resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string }
-        fetchRemoteContexts?: boolean
-    }
-): Promise<any> {
-    let payloadToSign
-    if(!credential.aggregated_bls_public_key) {
-        payloadToSign = canonicalize({
-            '@context': credential['@context'],
-            type: credential['type'],
-            multi_issuers: credential['multi_issuers'],
-            credentialSubject: credential['credentialSubject'],
-        })
-    }
-    else{
-        payloadToSign = canonicalize({
-            '@context': credential['@context'],
-            type: credential['type'],
-            multi_issuers: credential['multi_issuers'],
-            credentialSubject: credential['credentialSubject'],
-            aggregated_bls_public_key: credential['aggregated_bls_public_key'],
-
-        })
-
-
-    }
-
-    if (!payloadToSign) {
-        throw new Error('Failed to canonicalize credential payload')
-    }
-    const signatureHex = await options.signer(Uint8Array.from(Buffer.from(payloadToSign, 'utf-8')))
-
-    const signatureData = {
-        payloadToSign,
-        signatureHex,
-    }
-    //fundemental to understand what has been signed
-    //console.log("payload that has been signed",payloadToSign)
-
-    return {
-        signatureData
-    }
-}
-
-
-    /**
- * Create a BLS-signed Verifiable Credential
- */
-export async function createVerifiableCredentialBls(
-    credential: any,
-    options: {
-        alg: string
-        did: string
-        signer: (data: Uint8Array) => Promise<string>
-    },
-    settings?: {
-        resolutionOptions?: DIDResolutionOptions & { publicKeyFormat?: string }
-        fetchRemoteContexts?: boolean
-    }
-): Promise<any> {
-    const payloadToSign = canonicalize({
-        '@context': credential['@context'],
-        type: credential['type'],
-        issuer: credential['issuer'],
-        issuanceDate: credential['issuanceDate'],
-        credentialSubject: credential['credentialSubject'],
-    })
-
-    if (!payloadToSign) {
-        throw new Error('Failed to canonicalize credential payload')
-    }
-
-
-
-    const signatureHex = await options.signer(Uint8Array.from(Buffer.from(payloadToSign, 'utf-8')))
-
-    const proof = {
-        type: 'BlsSignaturePisa',
-        created: new Date().toISOString(),
-        proofPurpose: 'assertionMethod',
-        verificationMethod: `${options.did}#delegate-1`,
-        signatureValue: signatureHex,
-    }
-
-        return {
-            '@context': credential['@context'],
-            type: credential['type'],
-            issuer: credential['issuer'],
-            issuanceDate: credential['issuanceDate'],
-            credentialSubject: credential['credentialSubject'],
-            proof: proof, // explicitly last
-        }
-}
-
-
-/**
- * Verify a BLS-signed Verifiable Credential
- */
-export async function verifyCredentialBls(
-    credential: VerifiableCredential,
-    context: VerifierAgentContext,
-    resolutionOptions?: DIDResolutionOptions,
-    blsBackend?: BlsBackend,
-): Promise<IVerifyResult> {
-    const proof = credential.proof
-    if (!proof || !proof.type || !proof.signatureValue) {
-        return {
-            verified: false,
-            error: {
-                message: 'Missing or malformed proof object',
-                errorCode: 'invalid_proof',
-            },
-        }
-    }
-
-    const isAggregate = Array.isArray(proof.verificationMethod)
-    const methods = isAggregate ? proof.verificationMethod : [proof.verificationMethod]
-    const signatureHex = proof.signatureValue
-    const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
-
-    try {
-        // Canonicalize VC payload without proof
-        const payload = canonicalize({
-            '@context': credential['@context'],
-            type: credential['type'],
-            issuer: credential['issuer'],
-            credentialSubject: credential['credentialSubject'],
-        })
-
-
-        if (!payload) throw new Error('Failed to canonicalize VC')
-
-        const message = Uint8Array.from(Buffer.from(payload, 'utf-8'))
-
-        // Resolve all verification methods
-        const resolvedKeys = await Promise.all(
-            methods.map(async (method:string) => {
-                const doc = await context.agent.resolveDid({
-                    didUrl: method,
-                    options: resolutionOptions,
-                })
-
-                const vm = doc?.didDocument?.verificationMethod?.find((v) => {
-                    if(v.type === 'Bls12381G1')
-                        return v
-                    else
-                        return null
-                })
-
-
-                const hex = vm?.publicKeyHex
-                if (!hex) {
-                    throw new Error(`Missing public key for ${method}`)
-                }
-                return backend === 'noble' ? hexToBytes(strip0x(hex)) : (await getChainsafeBls()).PublicKey.fromHex(strip0x(hex))
-            })
-        )
-
-        const signatureBytes = hexToBytes(strip0x(signatureHex))
-        const verified =
-            backend === 'noble'
-                ? isAggregate
-                    ? (await getNobleBls()).verify(
-                          signatureBytes,
-                          message,
-                          (await getNobleBls()).aggregatePublicKeys(resolvedKeys),
-                      )
-                    : (await getNobleBls()).verify(signatureBytes, message, resolvedKeys[0])
-                : isAggregate
-                  ? (await getChainsafeBls()).verifyAggregate(
-                        resolvedKeys,
-                        message,
-                        (await getChainsafeBls()).Signature.fromHex(strip0x(signatureHex)),
-                    )
-                  : (await getChainsafeBls()).verify(
-                        resolvedKeys[0],
-                        message,
-                        (await getChainsafeBls()).Signature.fromHex(strip0x(signatureHex)),
-                    )
-
-
-        return verified
-            ? { verified: true }
-            : {
-                verified: false,
-                error: {
-                    message: 'BLS signature verification failed',
-                    errorCode: 'invalid_signature',
-                },
-            }
-    } catch (e: any) {
-        return {
-            verified: false,
-            error: {
-                message: e.message,
-                errorCode: e.code || 'verification_error',
-            },
-        }
-    }
-}
-
-
-/**
- * Verify a BLS-signed Verifiable Credential
- */
-export async function verifyCredentialMultiSignatureBls(
-    credential: MultiIssuerVerifiableCredential,
-    context: VerifierAgentContext,
-    resolutionOptions?: DIDResolutionOptions,
-    blsBackend?: BlsBackend,
-): Promise<IVerifyResult> {
-    const proof = credential.proof
-    if (!proof || !proof.type || !proof.signatureValue) {
-        return {
-            verified: false,
-            error: {
-                message: 'Missing or malformed proof object',
-                errorCode: 'invalid_proof',
-            },
-        }
-    }
-
-    const isAggregate = Array.isArray(proof.verificationMethod)
-    if(!isAggregate){
-        throw new Error('Single Signature Verification method is verifySignatureBls')
-    }
-    const methods = isAggregate ? proof.verificationMethod : [proof.verificationMethod]
-    const signatureHex = proof.signatureValue
-    const backend = blsBackend ?? resolveBlsBackend(readEnv('VERAMO_BLS_BACKEND'))
-
-    try {
-        if (proof.type !== 'BlsMultiSignaturePisa') {
-            return {
-                verified: false,
-                error: {
-                    message: `Invalid proof.type. Expected 'BlsMultiSignaturePisa' but got '${proof.type}'`,
-                    errorCode: 'invalid_proof',
-                },
-            }
-        }
-
-        // Canonicalize VC payload without proof
-
-        const payload = canonicalize({
-            '@context': credential['@context'],
-            type: credential['type'],
-            multi_issuers: credential['multi_issuers'],
-            credentialSubject: credential['credentialSubject'],
-        })
-
-        if (!payload) throw new Error('Failed to canonicalize VC')
-
-        const message = Uint8Array.from(Buffer.from(payload, 'utf-8'))
-        const signatureBytes = hexToBytes(strip0x(signatureHex))
-
-
-        // Resolve all verification methods
-        const resolvedKeys = await Promise.all(
-            methods.map(async (method:string) => {
-                const doc = await context.agent.resolveDid({
-                    didUrl: method,
-                    options: resolutionOptions,
-                })
-
-                const vm = doc?.didDocument?.verificationMethod?.find((v) => {
-                    if(v.type === 'Bls12381G1')
-                        return v
-                    else
-                        return null
-                })
-
-
-                const hex = vm?.publicKeyHex
-                if (!hex) {
-                    throw new Error(`Missing public key for ${method}`)
-                }
-                return backend === 'noble' ? hexToBytes(strip0x(hex)) : (await getChainsafeBls()).PublicKey.fromHex(strip0x(hex))
-            })
-        )
-
-        //THERE IS THE POSSIBILITY OF AGGREGATING THE PUBLIC KEYS AND THEN TO verify
-        //const aggregatedKeys = bls.aggregatePublicKeys(resolvedKeys)
-        //const verified = bls.verify(aggregatedKeys, Buffer.from( payload,'utf-8'), signature)
-        const verified =
-            backend === 'noble'
-                ? (await getNobleBls()).verify(
-                      signatureBytes,
-                      Buffer.from(payload, 'utf-8'),
-                      (await getNobleBls()).aggregatePublicKeys(resolvedKeys),
-                  )
-                : (await getChainsafeBls()).verifyAggregate(
-                      resolvedKeys,
-                      Buffer.from(payload, 'utf-8'),
-                      (await getChainsafeBls()).Signature.fromHex(strip0x(signatureHex)),
-                  )
-
-
-        return verified
-            ? { verified: true }
-            : {
-                verified: false,
-                error: {
-                    message: 'BLS signature verification failed',
-                    errorCode: 'invalid_signature',
-                },
-            }
-    } catch (e: any) {
-        return {
-            verified: false,
-            error: {
-                message: e.message,
-                errorCode: e.code || 'verification_error',
-            },
-        }
-    }
+    context,
+    resolutionOptions,
+    backend,
+  )
 }
