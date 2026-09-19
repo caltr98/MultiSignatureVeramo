@@ -1,4 +1,5 @@
-import canonicalize from 'canonicalize'
+import canonicalizeLib from 'canonicalize'
+const canonicalize = canonicalizeLib as unknown as (value: unknown) => string | undefined
 import {
   generatePayloadToSign,
   signPayloadWithIssuers,

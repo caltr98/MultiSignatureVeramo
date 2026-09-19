@@ -10,8 +10,8 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@veramo/core-types": "^6.0.0",
-    "@veramo/did-discovery": "^6.0.0"
+    "@veramo/core-types": "^7.0.1",
+    "@veramo/did-discovery": "^7.0.1"
   },
   "devDependencies": {
     "typescript": "5.7.3"

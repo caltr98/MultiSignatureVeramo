@@ -1,45 +1,42 @@
 # Server Demo (standalone)
 
-This folder contains a standalone HTTP server and client to exercise the PoO + BLS multi-holder VP flow over HTTP.
+This folder contains an HTTP server and client for the PoO + BLS multi-holder VP flow.
 
-## Requirements
+## Build and configure
 
-- Node.js
-- `yarn install` at the repo root (`MultiSignatureVeramo/`)
+Use Node.js 22 or newer. From the repository root:
 
-## Build
+```bash
+corepack yarn install --frozen-lockfile
+corepack yarn build
+```
 
-From `MultiSignatureVeramo/`:
+The compiled entry points are in `dist/src/server-demo/`. Copy [`.env.example`](../../.env.example) to `.env` and configure `SEPOLIA_RPC_URL`, `VERAMO_DID_REGISTRY`, and `VERAMO_KMS_SECRET_KEY`. The key must be 32 bytes encoded as hexadecimal; retain it to reopen the same SQLite store.
 
-- `yarn tsc -p tsconfig.json`
+Choose `VERAMO_BLS_BACKEND=chainsafe` or `VERAMO_BLS_BACKEND=noble` in `.env`. Both agents must use the same backend.
 
-This compiles `src/server-demo/*.ts` into `src/server-demo/*.js`.
+## Run the server and client
 
-## Run server
+From the repository root, start the server:
 
-From `MultiSignatureVeramo/`:
+```bash
+node --env-file=.env dist/src/server-demo/veramo-server.js
+```
 
-- ChainSafe backend: `VERAMO_BLS_BACKEND=chainsafe HOST=0.0.0.0 PORT=3001 node src/server-demo/veramo-server.js`
-- noble backend: `VERAMO_BLS_BACKEND=noble HOST=0.0.0.0 PORT=3001 node src/server-demo/veramo-server.js`
+In a second terminal, run the client:
 
-Optional: require an API key for all non-GET endpoints:
+```bash
+node --env-file=.env dist/src/server-demo/client.js
+```
 
-- `API_KEY=change-me VERAMO_BLS_BACKEND=chainsafe HOST=0.0.0.0 PORT=3001 node src/server-demo/veramo-server.js`
+Optional environment settings:
 
-When `API_KEY` is set, clients must send header `x-api-key: <API_KEY>`.
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `HOST` | `0.0.0.0` | Server bind address. |
+| `PORT` | `3001` | Server port. |
+| `BASE_URL` | `http://localhost:3001` | Server URL used by the client. |
+| `HOLDERS` | `2` | Number of holders. |
+| `API_KEY` | Unset | Require the `x-api-key` header for non-GET requests. Set the same value for the client. |
 
-## Run client
-
-In a second terminal (from `MultiSignatureVeramo/`):
-
-- `BASE_URL=http://127.0.0.1:3001 HOLDERS=2 node src/server-demo/client.js`
-
-If the server uses `API_KEY`, also set it for the client:
-
-- `API_KEY=change-me BASE_URL=http://127.0.0.1:3001 HOLDERS=2 node src/server-demo/client.js`
-
-## Notes
-
-- This demo creates fresh DIDs/keys in the local Veramo SQLite store.
-- Verification uses DID resolution; ensure the RPC/resolver config in `src/veramo/setup.ts` is reachable from where you run the server.
-
+The demo creates fresh DIDs and keys in the local SQLite store. DID resolution requires the configured RPC endpoint. Run `corepack yarn test` for the offline integration suite.

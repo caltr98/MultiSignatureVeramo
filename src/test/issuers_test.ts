@@ -21,6 +21,7 @@ export async function benchmarkStep<T>(
 import { generateVCPayload } from "./generate_VC_payload.js"
 import {
     ICreateProofOfOwnershipMultiIssuerVerifiableCredentialArgs,
+    ICreateMultiIssuerVerifiableCredentialArgs,
     ISignMultiIssuerVerifiableCredentialArgs
 } from "../plugins/bls-extend-credential-w3c/src/action-handler.js"
 import {MinimalImportableKey} from "@veramo/core-types";
@@ -202,21 +203,16 @@ export async function VCAggregateKeysToSignaturesNoPoO(
 
     const payload = await generatePayloadToSign(issuers, holder, aggregatedBlsKey, claimCount, valueSize, seed)
 
-    // IMPORTANT: non-PoO VC flow currently canonicalizes without aggregated_bls_public_key on verify side.
-    // Keep payload parity by removing it here.
-    const payloadNoAggKey = { ...(payload as any) }
-    delete (payloadNoAggKey as any).aggregated_bls_public_key
-
-    const signaturesHexAndSignatures = await signPayloadWithIssuers(payloadNoAggKey, issuers)
+    const signaturesHexAndSignatures = await signPayloadWithIssuers(payload, issuers)
     const signaturesHex = signaturesHexAndSignatures.signatures as string[]
 
     const vc = await agent.createMultiIssuerVerifiableCredential({
-        credential: payloadNoAggKey,
+        credential: payload,
         issuer: { id: issuers[0].did },
         proofFormat: 'aggregate-bls-multi-signature',
         keyRef: issuers[0].kid_bls,
         signatures: signaturesHex,
-    } as unknown as ICreateVerifiableCredentialArgs & {
+    } as ICreateMultiIssuerVerifiableCredentialArgs & {
         proofFormat: 'aggregate-bls-multi-signature'
         signatures: string[]
     })
